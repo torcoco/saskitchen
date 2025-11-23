@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Demo_Game</title>
+<style>
+  :root{
+    --bg:#050818;
+    --bg2:#070c21;
+    --panel:#0b1024;
+    --ink:#eef2ff;
+    --muted:#9aa3c7;
+    --accent:#7b8cff;
+    --accent2:#22c55e;
+    --danger:#f97373;
+    --border:#1f2937;
+    --chip:#111827;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{
+    background:radial-gradient(900px 600px at 10% 0%,#1d2144 0,#050816 60%,#020312 100%);
+    color:var(--ink);
+    font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto;
+  }
+  body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  .page{
+    width:100%;
+    max-width:1200px;
+    padding:16px;
+  }
+
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .brand-icon{
+    width:32px;height:32px;border-radius:999px;
+    background:conic-gradient(from 200deg,#22c1c3,#4b6bff,#ff3cac,#22c1c3);
+    display:grid;place-items:center;
+    box-shadow:0 0 18px rgba(120,113,255,.6);
+  }
+  .brand-icon span{font-size:14px}
+  .brand-text{display:flex;flex-direction:column}
+  .brand-title{font-weight:700;font-size:18px}
+  .brand-sub{font-size:12px;color:var(--muted)}
+
+  .nav-chips{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  .chip-btn{
+    border-radius:999px;
+    padding:6px 12px;
+    border:1px solid rgba(148,163,184,.4);
+    background:rgba(15,23,42,.85);
+    color:var(--muted);
+    font-size:12px;
+    cursor:pointer;
+  }
+
+  .hero{
+    background:radial-gradient(900px 500px at 0% 0%,rgba(129,140,248,.35),transparent 60%),
+               radial-gradient(600px 400px at 100% 0%,rgba(45,212,191,.28),transparent 60%),
+               #050816;
+    border-radius:22px;
+    border:1px solid rgba(148,163,184,.35);
+    padding:18px;
+    display:grid;
+    grid-template-columns:minmax(0,1.5fr) minmax(0,1.2fr);
+    gap:16px;
+    margin-bottom:18px;
+    box-shadow:0 20px 55px rgba(15,23,42,.8);
+  }
+  .hero-kicker{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(15,23,42,.95);
+    border-radius:999px;
+    padding:5px 10px;
+    border:1px solid rgba(55,65,81,.8);
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  .hero-kicker span:last-child{color:#a5b4fc;font-weight:600}
+  .hero-main-title{
+    font-size:22px;font-weight:800;letter-spacing:.02em;margin-bottom:6px;
+  }
+  .hero-text{
+    font-size:13px;color:#cbd5ff;margin-bottom:10px;
+  }
+  .hero-badges{
+    display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;
+  }
+  .pill{
+    border-radius:999px;
+    background:rgba(15,23,42,.9);
+    border:1px solid rgba(148,163,184,.5);
+    padding:4px 9px;
+    font-size:11px;
+    color:var(--muted);
+  }
+  .hero-buttons{display:flex;flex-wrap:wrap;gap:8px}
+  .btn-primary{
+    border:none;
+    border-radius:999px;
+    padding:8px 16px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    background:linear-gradient(135deg,#22c55e,#16a34a);
+    color:#022c22;
+    box-shadow:0 12px 30px rgba(34,197,94,.45);
+  }
+  .btn-ghost{
+    border-radius:999px;
+    border:1px solid rgba(148,163,184,.6);
+    padding:8px 13px;
+    background:rgba(15,23,42,.9);
+    color:var(--muted);
+    font-size:12px;
+    cursor:pointer;
+  }
+
+  .hero-right{
+    border-radius:18px;
+    background:
+      radial-gradient(circle at 10% 0%,rgba(244,244,255,.5),transparent 40%),
+      radial-gradient(circle at 90% 100%,rgba(59,130,246,.45),transparent 50%),
+      linear-gradient(135deg,#020617,#020617 30%,#0b1120);
+    position:relative;
+    overflow:hidden;
+    min-height:150px;
+    padding:16px;
+  }
+  .hero-tag{
+    position:absolute;top:12px;left:14px;
+    font-size:11px;color:#e5e7eb;opacity:.85;
+  }
+  .hero-graphic{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .hero-bar{
+    width:140px;height:140px;border-radius:32px;
+    background:conic-gradient(from 210deg,#22c1c3,#4b6bff,#ff3cac,#22c1c3);
+    filter:blur(1px);opacity:.9;
+  }
+  .hero-overlay{
+    position:absolute;inset:0;
+    background:radial-gradient(circle at 30% 0%,rgba(15,23,42,.0),rgba(15,23,42,.7) 58%);
+  }
+
+  .toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:14px;
+  }
+  .search-group{position:relative;flex:1 1 260px;max-width:420px}
+  .search-input{
+    width:100%;
+    padding:8px 32px 8px 32px;
+    border-radius:999px;
+    border:1px solid rgba(75,85,99,.9);
+    background:rgba(15,23,42,.9);
+    color:var(--ink);
+    font-size:13px;
+  }
+  .search-input::placeholder{color:rgba(148,163,184,.8)}
+  .search-icon{
+    position:absolute;left:10px;top:50%;transform:translateY(-50%);
+    font-size:15px;opacity:.7;
+  }
+  .search-help{font-size:11px;color:var(--muted);margin-top:3px}
+
+  .filter-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .filter-chip{
+    border-radius:999px;
+    border:1px solid rgba(75,85,99,.9);
+    padding:4px 10px;
+    font-size:11px;
+    color:var(--muted);
+    cursor:pointer;
+    background:rgba(15,23,42,.9);
+  }
+  .filter-chip.active{
+    background:rgba(59,130,246,.15);
+    border-color:#60a5fa;
+    color:#e5e7eb;
+  }
+
+  h2.section-title{
+    font-size:16px;font-weight:700;margin:10px 0 6px;letter-spacing:.08em;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:14px;
+    margin-top:6px;
+    margin-bottom:26px;
+  }
+
+  .card{
+    background:linear-gradient(135deg,#020617,#020617 50%,#020920);
+    border-radius:18px;
+    border:1px solid rgba(30,64,175,.7);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 12px 35px rgba(15,23,42,.85);
+  }
+  .thumb{
+    width:100%;
+    aspect-ratio:16/9;
+    object-fit:cover;
+    background:radial-gradient(circle at 0 0,#1d4ed8,transparent 60%),
+               radial-gradient(circle at 100% 100%,#22c55e,transparent 60%),
+               #020617;
+  }
+  .thumb-placeholder{
+    display:grid;place-items:center;
+    font-size:12px;color:#a5b4fc;
+  }
+  .meta{padding:10px 12px 8px}
+  .title{font-size:14px;font-weight:700}
+  .desc{font-size:12px;color:var(--muted);margin-top:3px;margin-bottom:8px}
+  .tag-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+  .tag-pill{
+    font-size:10px;
+    padding:3px 7px;
+    border-radius:999px;
+    background:rgba(15,23,42,.9);
+    color:#a5b4fc;
+    border:1px solid rgba(79,70,229,.6);
+  }
+  .play-btn{
+    margin:0 10px 10px;
+    padding:7px 10px;
+    border-radius:999px;
+    border:none;
+    background:linear-gradient(135deg,#22c55e,#16a34a);
+    color:#022c22;
+    font-size:12px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
+  footer{font-size:11px;color:var(--muted);margin-bottom:4px}
+
+  .error-card{
+    max-width:360px;
+    min-width:260px;
+    background:#1b0b0e;
+    border-radius:16px;
+    border:1px solid rgba(248,113,113,.7);
+    padding:14px;
+    color:#fecaca;
+    font-size:13px;
+    line-height:1.5;
+    white-space:normal;
+    word-break:keep-all;
+  }
+  .error-card strong{color:#fee2e2}
+  .error-card small{font-size:11px;color:#fca5a5}
+
+  @media (max-width:840px){
+    .hero{grid-template-columns:1fr}
+    .hero-right{order:-1;min-height:160px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="brand">
+      <div class="brand-icon"><span>🎮</span></div>
+      <div class="brand-text">
+        <div class="brand-title">Demo_Game</div>
+        <div class="brand-sub">HTML5 미니 게임 컬렉션</div>
+      </div>
+    </div>
+    <div class="nav-chips">
+      <button class="chip-btn">TOP 게임</button>
+      <button class="chip-btn">퍼즐</button>
+      <button class="chip-btn">보드게임</button>
+      <button class="chip-btn">두뇌운동</button>
+      <button class="chip-btn">반응속도</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="hero-kicker">
+        <span>NEW</span><span>브라우저에서 바로 플레이</span>
+      </div>
+      <h2 class="hero-main-title">무료 HTML5 게임으로 쉬어가기 🎆</h2>
+      <p class="hero-text">
+        터치/키보드만 있으면 바로 즐길 수 있는 작은 게임들을 모아 두었어요.
+        아이들이나 학생들과 함께 가볍게 플레이해 보세요.
+      </p>
+      <div class="hero-badges">
+        <span class="pill">퍼즐</span>
+        <span class="pill">보드게임</span>
+        <span class="pill">두뇌운동</span>
+        <span class="pill">반응속도</span>
+      </div>
+      <div class="hero-buttons">
+        <button class="btn-primary" id="btn-scroll-grid">지금 바로 둘러보기</button>
+        <button class="btn-ghost">직접 만든 미니게임</button>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-tag">Enjoy my games!</div>
+      <div class="hero-graphic"><div class="hero-bar"></div></div>
+      <div class="hero-overlay"></div>
+    </div>
+  </section>
+
+  <section class="toolbar">
+    <div class="search-group">
+      <span class="search-icon">🔍</span>
+      <input id="q" class="search-input" type="search" placeholder="게임 검색… (이름, 태그)">
+      <div class="search-help" id="game-count-text"></div>
+    </div>
+    <div class="filter-chips" id="tag-filters">
+      <button class="filter-chip active" data-tag="all">전체</button>
+      <button class="filter-chip" data-tag="브레이크아웃">브레이크아웃</button>
+      <button class="filter-chip" data-tag="보드">보드</button>
+      <button class="filter-chip" data-tag="퍼즐">퍼즐</button>
+      <button class="filter-chip" data-tag="슈팅">슈팅</button>
+      <button class="filter-chip" data-tag="AI">AI</button>
+    </div>
+  </section>
+
+  <h2 class="section-title">PLAY FREE HTML5 GAMES!</h2>
+  <div id="grid" class="grid" aria-live="polite"></div>
+
+  <footer>© 2024 Demo_Game — HTML5 데모 모음</footer>
+</div>
+
+<script>
+(async function(){
+  const JSON_PATH = 'games/games.json';   // ★ games/games.json 사용
+
+  const grid   = document.getElementById('grid');
+  const q      = document.getElementById('q');
+  const countText = document.getElementById('game-count-text');
+  const filterBar = document.getElementById('tag-filters');
+  const btnScroll = document.getElementById('btn-scroll-grid');
+
+  let games = [];
+  let currentTag = 'all';
+
+  try{
+    const res = await fetch(JSON_PATH, {cache:'no-store'});
+    if(!res.ok){
+      throw new Error('파일을 찾을 수 없습니다. HTTP Status: '+res.status);
+    }
+    games = await res.json();
+    console.log('[Demo_Game] games.json loaded from', JSON_PATH);
+  }catch(e){
+    console.error(e);
+    grid.innerHTML = `
+      <div class="error-card">
+        <strong>⚠ 게임 목록 (<code>${JSON_PATH}</code>)을 불러오지 못했습니다.</strong>
+        <p style="margin-top:6px;">
+          <code>index.html</code>이 있는 폴더 아래의
+          <code>games/games.json</code> 경로에 파일이 있는지 확인해주세요.
+        </p>
+        <small>(오류 상세: ${e.message || '네트워크 / CORS 오류'})</small>
+      </div>
+    `;
+    countText.textContent = '';
+    return;
+  }
+
+  function buildCard(g){
+    const thumbHtml = g.thumb
+      ? `<img class="thumb" src="${g.thumb}" alt="">`
+      : `<div class="thumb thumb-placeholder">No Thumbnail</div>`;
+    const tagsHtml = (g.tags || []).map(t => `<span class="tag-pill">${t}</span>`).join('');
+    return `
+      <article class="card">
+        ${thumbHtml}
+        <div class="meta">
+          <div class="title">${g.title}</div>
+          <p class="desc">${g.desc || ''}</p>
+          <div class="tag-row">${tagsHtml}</div>
+        </div>
+        <div style="padding-bottom:6px;">
+          <button class="play-btn" onclick="window.open('${g.url}','_blank')">PLAY NOW!</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function applyFilter(text, tag){
+    const t = text.trim().toLowerCase();
+    return games.filter(g=>{
+      if(tag !== 'all' && !(g.tags || []).includes(tag)) return false;
+      if(!t) return true;
+      const blob = (g.title+' '+(g.desc||'')+' '+(g.tags||[]).join(' ')).toLowerCase();
+      return blob.includes(t);
+    });
+  }
+
+  function render(){
+    const list = applyFilter(q.value, currentTag);
+    grid.innerHTML = list.length
+      ? list.map(buildCard).join('')
+      : `<div style="color:#9aa3c7;font-size:13px;">검색 결과가 없습니다.</div>`;
+    countText.textContent = `총 ${games.length}개의 게임이 준비되어 있습니다.`;
+  }
+
+  q.addEventListener('input', render);
+
+  filterBar.addEventListener('click', e=>{
+    const btn = e.target.closest('.filter-chip');
+    if(!btn) return;
+    [...filterBar.querySelectorAll('.filter-chip')]
+      .forEach(b=>b.classList.toggle('active', b===btn));
+    currentTag = btn.dataset.tag;
+    render();
+  });
+
+  btnScroll.addEventListener('click', ()=>{
+    grid.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
