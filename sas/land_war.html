@@ -817,6 +817,7 @@
         }
       }
 
+      // ★ 여기서부터가 정리된 stepPlayer
       function stepPlayer() {
         const dir = getInputDir();
         const dx = dir.x;
@@ -837,29 +838,6 @@
           if (nextCell === 1) {
             player.x = nx;
             player.y = ny;
-          } else if (nextCell === 0) {
-            player.drawing = true;
-            player.x = nx;
-            player.y = ny;
-            player.trail = [{ x: nx, y: ny }];
-            board[ny][nx] = 2;
-          }
-        } else {
-          if (nextCell === 0) {
-            player.x = nx;
-            player.y = ny;
-            player.trail.push({ x: nx, y: ny });
-            board[ny][nx] = 2;
-          } else if (nextCell === 1) {
-            player.x = nx;
-            player.y = ny;
-            completeTrailAndFill();
-          } else if (nextCell === 2) {
-            loseLife();
-          }
-        }
-      }
-y;
           } else if (nextCell === 0) {
             player.drawing = true;
             player.x = nx;
