@@ -357,7 +357,7 @@
 
 <script>
 (async function(){
-  const JSON_PATH = 'games/games.json';   // ★ games/games.json 사용
+  const JSON_PATH = 'sas/games.json';   // ★ sas/games.json 사용
 
   const grid   = document.getElementById('grid');
   const q      = document.getElementById('q');
@@ -382,7 +382,7 @@
         <strong>⚠ 게임 목록 (<code>${JSON_PATH}</code>)을 불러오지 못했습니다.</strong>
         <p style="margin-top:6px;">
           <code>index.html</code>이 있는 폴더 아래의
-          <code>games/games.json</code> 경로에 파일이 있는지 확인해주세요.
+          <code>sas/games.json</code> 경로에 파일이 있는지 확인해주세요.
         </p>
         <small>(오류 상세: ${e.message || '네트워크 / CORS 오류'})</small>
       </div>
@@ -449,3 +449,4 @@
 </script>
 </body>
 </html>
+
