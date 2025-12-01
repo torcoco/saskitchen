@@ -348,7 +348,18 @@
       <button class="filter-chip" data-tag="AI">AI</button>
     </div>
   </section>
-
+<h2 class="section-title">🏆 HALL OF FAME (테스트용)</h2>
+  <div style="background: rgba(15,23,42,.9); border: 1px solid rgba(30,64,175,.7); border-radius: 18px; padding: 16px; margin-bottom: 20px;">
+    <ul id="ranking-list" style="list-style: none; color: #cbd5ff; font-size: 14px; line-height: 1.8;">
+      <li>데이터를 불러오는 중...</li>
+    </ul>
+    
+    <div style="margin-top: 10px; border-top: 1px solid rgba(148,163,184,.3); padding-top: 10px;">
+      <input type="text" id="test-name" placeholder="닉네임" style="background:#050818; border:1px solid #4b5563; color:white; padding:4px;">
+      <input type="number" id="test-score" placeholder="점수" style="background:#050818; border:1px solid #4b5563; color:white; padding:4px; width:80px;">
+      <button onclick="window.manualSave()" class="chip-btn" style="background:#22c55e; color:#022c22; border:none; font-weight:bold;">점수 기록해보기</button>
+    </div>
+  </div>
   <h2 class="section-title">PLAY FREE HTML5 GAMES!</h2>
   <div id="grid" class="grid" aria-live="polite"></div>
 
@@ -447,8 +458,80 @@
   render();
 })();
 </script>
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBc3aB342Yp0hjLLj4hw0xJ-s8hOU_OmMg",
+  authDomain: "saskitchen-rank-96f61.firebaseapp.com",
+  projectId: "saskitchen-rank-96f61",
+  storageBucket: "saskitchen-rank-96f61.firebasestorage.app",
+  messagingSenderId: "785643491182",
+  appId: "1:785643491182:web:fc195dbaa79a6eee047b7f"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // 1. 점수 저장 함수
+  window.saveScore = async function(nickname, score) {
+    try {
+      await addDoc(collection(db, "leaderboard"), {
+        name: nickname,
+        score: Number(score),
+        date: new Date().toISOString()
+      });
+      alert("✅ 기록 저장 완료!");
+      loadRankings(); // 목록 새로고침
+    } catch (e) {
+      console.error("Error:", e);
+      alert("저장 실패 ㅠㅠ (콘솔 확인)");
+    }
+  }
+
+  // 2. 랭킹 불러오기 함수
+  async function loadRankings() {
+    const list = document.getElementById("ranking-list");
+    const q = query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(5));
+    
+    try {
+      const snapshot = await getDocs(q);
+      list.innerHTML = ""; // 초기화
+      let rank = 1;
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const li = document.createElement("li");
+        // 1등은 특별하게 이모지 붙이기
+        const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}위`;
+        li.innerHTML = `<span style="color:#7b8cff; font-weight:bold; margin-right:10px;">${medal}</span> ${data.name} <span style="float:right; color:#22c55e;">${data.score}점</span>`;
+        list.appendChild(li);
+        rank++;
+      });
+      if(rank === 1) list.innerHTML = "<li>아직 등록된 랭킹이 없어요.</li>";
+    } catch (e) {
+      console.error(e);
+      list.innerHTML = "<li>랭킹 로드 실패 (설정값 확인 필요)</li>";
+    }
+  }
+  
+  // 3. 테스트용 수동 저장 함수 (버튼 클릭 시 작동)
+  window.manualSave = function() {
+    const name = document.getElementById("test-name").value;
+    const score = document.getElementById("test-score").value;
+    if(name && score) {
+        saveScore(name, score);
+    } else {
+        alert("이름과 점수를 입력해주세요");
+    }
+  }
+
+  // 페이지 열리면 랭킹 로드
+  loadRankings();
+</script>
 </body>
 </html>
+
 
 
 
