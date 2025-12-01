@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>뱀 꼬리 게임 v12 (Ranked)</title>
+  <style>
+    * { box-sizing: border-box; touch-action: manipulation; }
+    body { 
+      margin: 0; height: 100vh; 
+      display: flex; flex-direction: column; justify-content: center; align-items: center; 
+      background: #050505; color: #fff; 
+      font-family: 'Pretendard', system-ui, -apple-system, sans-serif; 
+      overflow: hidden; 
+    }
+    
+    #hudArea { margin-bottom: 5px; text-align: center; z-index: 20; }
+    #scoreBoard { font-size: 28px; font-weight: bold; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+    #missionInfo { font-size: 13px; color: #aaa; margin-top: 2px; }
+
+    .container { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      position: relative; 
+    }
+    
+    #gameCanvas { 
+      background: #121212; 
+      border-radius: 12px;
+      box-shadow: 0 0 0 3px #333, 0 10px 40px rgba(0,0,0,0.9);
+      display: block; 
+      max-width: 95vw;
+      max-height: 55vh; 
+    }
+
+    #info { margin-top: 8px; font-size: 12px; opacity: 0.7; }
+    #controls { margin-top: 4px; font-size: 12px; opacity: 0.7; }
+
+    #dpad {
+      display: grid;
+      grid-template-areas: 
+        ". U ."
+        "L D R"
+        ". . .";
+      gap: 4px;
+      margin-top: 10px;
+      padding: 5px;
+    }
+    #dpad div { width: 60px; height: 50px; }
+    .d-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; color: #fff;
+      cursor: pointer; user-select: none;
+      backdrop-filter: blur(5px);
+    }
+    .d-btn:active { background: rgba(46, 204, 113, 0.5); border-color: #2ecc71; transform: scale(0.95); }
+    #btnUp { grid-area: U; }
+    #btnLeft { grid-area: L; }
+    #btnRight { grid-area: R; }
+    #btnDown { grid-area: D; }
+
+    @media (min-width: 768px) { #dpad { display: none; } }
+
+    .overlay { 
+      position: fixed; inset: 0; 
+      display: flex; align-items: center; justify-content: center; 
+      background: rgba(0, 0, 0, 0.85); /* 배경 조금 더 어둡게 */
+      z-index: 50; 
+      backdrop-filter: blur(5px);
+    }
+    .overlay.hidden { display: none; }
+    .modal-box { 
+      background: #1e213a; 
+      border: 1px solid #555; border-radius: 20px; padding: 24px; 
+      text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.9); 
+      width: 320px; /* 너비 살짝 늘림 */
+    }
+    
+    h2 { margin: 0 0 5px; font-size: 22px; color: #fff; }
+    p { color: #bdc3ff; margin-bottom: 15px; font-size: 13px; }
+    .victory-text { color: #f1c40f; font-size: 36px; font-weight: 900; margin-bottom: 10px; display: none; text-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+    
+    input { background: #131629; border: 1px solid #555; color: #fff; padding: 10px; border-radius: 8px; text-align: center; font-size: 16px; width: 100%; margin-bottom: 10px; outline: none; }
+    button { border: none; padding: 12px 20px; border-radius: 50px; color: #fff; font-weight: bold; cursor: pointer; font-size: 14px; margin: 0 4px; }
+    button:hover { filter: brightness(1.1); }
+    
+    #mainBtn { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+    #saveRankBtn { background: linear-gradient(135deg, #3498db, #2980b9); }
+    
+    .preload-font { font-family: serif; position: absolute; opacity: 0; pointer-events: none; }
+
+    /* 랭킹 스타일 추가 */
+    #rankingArea {
+        margin-bottom: 15px;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 10px;
+    }
+    #rankList {
+        list-style: none; padding: 0; margin: 0;
+        max-height: 140px; overflow-y: auto;
+        font-size: 13px; color: #ddd;
+        text-align: left;
+    }
+    #rankList li {
+        display: flex; justify-content: space-between;
+        padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    #rankList li:last-child { border-bottom: none; }
+    /* 스크롤바 꾸미기 */
+    #rankList::-webkit-scrollbar { width: 5px; }
+    #rankList::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <span class="preload-font">🍎</span> 
+
+  <div id="hudArea">
+    <div id="scoreBoard">🍎 0</div>
+    <div id="missionInfo">목표: 사과 100개</div>
+  </div>
+
+  <div class="container">
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    
+    <div id="dpad">
+      <div id="btnUp" class="d-btn">▲</div>
+      <div id="btnLeft" class="d-btn">◀</div>
+      <div id="btnDown" class="d-btn">▼</div>
+      <div id="btnRight" class="d-btn">▶</div>
+    </div>
+
+    <div id="info">PC: 방향키 / WASD</div>
+    <div id="controls">BGM: <input id="volume" type="range" min="0" max="100" value="20" style="vertical-align: middle; width: 60px;"></div>
+  </div>
+
+  <div id="uiOverlay" class="overlay">
+    <div class="modal-box">
+      <div id="victoryText" class="victory-text">승리!</div>
+      <h2 id="uiTitle">Snake v12</h2>
+      <p id="uiDesc">닉네임을 입력하세요</p>
+      
+      <div id="rankingArea" style="display:none;">
+          <div style="font-weight:bold; color:#f1c40f; margin-bottom:8px; font-size:14px;">🏆 명예의 전당 (Top 10)</div>
+          <ul id="rankList">
+              <li>로딩 중...</li>
+          </ul>
+      </div>
+
+      <div id="inputArea">
+        <input id="nameInput" type="text" maxlength="8" placeholder="이름 (최대 8자)" autocomplete="off" />
+      </div>
+
+      <div style="display:flex; justify-content: center;">
+        <button id="saveRankBtn" style="display:none;">기록 저장</button>
+        <button id="mainBtn">게임 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="bgm" src="bgm.m4a" loop></audio>
+
+  <script type="module">
+    // [Firebase 설정 및 함수]
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBc3aB342Yp0hjLLj4hw0xJ-s8hOU_OmMg",
+      authDomain: "saskitchen-rank-96f61.firebaseapp.com",
+      projectId: "saskitchen-rank-96f61",
+      storageBucket: "saskitchen-rank-96f61.firebasestorage.app",
+      messagingSenderId: "785643491182",
+      appId: "1:785643491182:web:fc195dbaa79a6eee047b7f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const COLLECTION_NAME = "leaderboard_snake";
+
+    // 랭킹 불러오기
+    window.loadSnakeRankings = async function() {
+        const list = document.getElementById("rankList");
+        const rankArea = document.getElementById("rankingArea");
+        
+        rankArea.style.display = "block"; // 랭킹판 보이기
+        list.innerHTML = "<li style='text-align:center;'>순위표 불러오는 중...</li>";
+
+        try {
+            const q = query(collection(db, COLLECTION_NAME), orderBy("score", "desc"), limit(10));
+            const snapshot = await getDocs(q);
+            
+            list.innerHTML = "";
+            if (snapshot.empty) {
+                list.innerHTML = "<li style='text-align:center; color:#777;'>아직 기록이 없어요. 1등 도전!</li>";
+                return;
+            }
+
+            let rank = 1;
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const li = document.createElement("li");
+                
+                const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}.`;
+                const color = rank <= 3 ? "#fff" : "#aaa"; // 상위권 강조
+                const weight = rank <= 3 ? "bold" : "normal";
+
+                li.innerHTML = `
+                    <span style="color:${color}; font-weight:${weight}">${medal} ${data.name}</span> 
+                    <span style="color:#2ecc71; font-weight:${weight}">${data.score}</span>
+                `;
+                list.appendChild(li);
+                rank++;
+            });
+        } catch (e) {
+            console.error(e);
+            list.innerHTML = "<li>랭킹 로드 실패</li>";
+        }
+    }
+
+    // 점수 저장하기
+    window.saveMyScore = async function() {
+        const nameInput = document.getElementById("nameInput");
+        const name = nameInput.value.trim();
+        
+        if(!name) {
+            alert("이름을 입력해주세요!");
+            return;
+        }
+
+        const saveBtn = document.getElementById("saveRankBtn");
+        saveBtn.disabled = true;
+        saveBtn.innerText = "저장 중...";
+
+        try {
+            await addDoc(collection(db, COLLECTION_NAME), {
+                name: name,
+                score: score,
+                date: new Date().toISOString()
+            });
+            alert("✅ 명예의 전당에 등록되었습니다!");
+            
+            // 저장 후 UI 정리
+            document.getElementById("inputArea").style.display = "none";
+            saveBtn.style.display = "none";
+            loadSnakeRankings(); // 랭킹 갱신
+        } catch (e) {
+            alert("저장 실패. 인터넷 연결을 확인해주세요.");
+            console.error(e);
+            saveBtn.disabled = false;
+            saveBtn.innerText = "기록 저장";
+        }
+    }
+
+    // [기존 게임 로직]
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const bgm = document.getElementById("bgm");
+    const scoreEl = document.getElementById("scoreBoard");
+    
+    bgm.volume = 0.2;
+
+    function resizeCanvas() {
+        const size = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.55, 400);
+        canvas.style.width = size + "px";
+        canvas.style.height = size + "px";
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const COLS = 20;
+    const ROWS = 20;
+    const TILE = 20; 
+    const MAX_RED_APPLES = 3; 
+    const VICTORY_SCORE = 100;
+
+    let snake = [];
+    let direction = { x: 0, y: 0 };
+    let nextDirection = { x: 0, y: 0 };
+    let apples = []; 
+    // 전역 변수로 쓸 수 있게 window에 붙임 (모듈 스코프 이슈 방지)
+    window.score = 0; 
+    let eatenCount = 0; 
+    let redApplesEatenBatch = 0; 
+    
+    // 모듈 스코프 변수지만 내부 함수들이 쓰므로 let 유지
+    let isGameOver = false;
+    let isPlaying = false;
+    let isVictory = false; 
+    let playerName = "Unknown";
+    let speed = 120; 
+    let lastTime = 0;
+    let dropCounter = 0;
+    let frameCounter = 0;
+
+    let mainColor = "#2ecc71"; 
+    let darkColor = "#1e8449"; 
+    
+    let fireworks = [];
+
+    function updateSnakeColor() {
+        const stage = Math.floor(score / 10);
+        const colors = [
+            "#2ecc71", "#f1c40f", "#3498db", "#9b59b6", 
+            "#e67e22", "#e74c3c", "#1abc9c", "#2c3e50"
+        ];
+        mainColor = colors[stage % colors.length];
+        darkColor = adjustColorBrightness(mainColor, -60); 
+    }
+
+    function adjustColorBrightness(hex, percent) {
+        hex = hex.replace(/^\s*#|\s*$/g, '');
+        if (hex.length === 3) hex = hex.replace(/(.)/g, '$1$1');
+        let r = parseInt(hex.substr(0, 2), 16);
+        let g = parseInt(hex.substr(2, 2), 16);
+        let b = parseInt(hex.substr(4, 2), 16);
+        r = Math.max(0, Math.min(255, r + percent));
+        g = Math.max(0, Math.min(255, g + percent));
+        b = Math.max(0, Math.min(255, b + percent));
+        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+    }
+
+    class Firework {
+        constructor(x, y, color) {
+            this.x = x; this.y = y; this.color = color;
+            this.particles = [];
+            for(let i=0; i<12; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 1;
+                this.particles.push({x:x, y:y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:1.0});
+            }
+        }
+        update() {
+            this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.03; });
+            this.particles = this.particles.filter(p => p.life > 0);
+        }
+        draw(ctx) {
+            this.particles.forEach(p => {
+                ctx.globalAlpha = p.life; ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    function drawApple(x, y, type) {
+      const cx = x * TILE + TILE / 2;
+      const cy = y * TILE + TILE / 2;
+      ctx.font = "20px serif"; 
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const yOffset = 2;
+      if (type === 'red') ctx.fillText("🍎", cx, cy + yOffset);
+      else ctx.fillText("🍏", cx, cy + yOffset);
+    }
+
+    function drawSnake() {
+        for (let i = snake.length - 1; i >= 0; i--) {
+            const seg = snake[i];
+            const cx = seg.x * TILE + TILE / 2;
+            const cy = seg.y * TILE + TILE / 2;
+            const isHead = (i === 0);
+            const isTail = (i === snake.length - 1 && snake.length > 1);
+
+            let angle = 0;
+            if (isHead) {
+                if (direction.x === 1) angle = 0;
+                else if (direction.x === -1) angle = Math.PI;
+                else if (direction.y === 1) angle = Math.PI/2;
+                else if (direction.y === -1) angle = -Math.PI/2;
+            } else if (isTail) {
+                const prev = snake[i - 1]; 
+                let dx = prev.x - seg.x;
+                let dy = prev.y - seg.y;
+                angle = Math.atan2(dy, dx);
+            } else {
+                const prev = snake[i - 1];
+                let dx = prev.x - seg.x;
+                let dy = prev.y - seg.y;
+                angle = Math.atan2(dy, dx);
+            }
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+
+            ctx.fillStyle = darkColor;
+            const size = TILE * 0.9;
+            const r = 5;
+            ctx.beginPath();
+            
+            if (isHead) {
+                const w = TILE * 0.9;
+                const h = TILE * 0.9;
+                const hr = h / 2;
+                ctx.moveTo(-w/2, -h/2);
+                ctx.lineTo(w/2 - hr, -h/2);
+                ctx.quadraticCurveTo(w/2, -h/2, w/2, -h/2 + hr);
+                ctx.lineTo(w/2, h/2 - hr);
+                ctx.quadraticCurveTo(w/2, h/2, w/2 - hr, h/2);
+                ctx.lineTo(-w/2, h/2);
+                ctx.fill();
+            } else if (isTail) {
+                ctx.moveTo(TILE/2, -TILE/2 + 3); 
+                ctx.lineTo(TILE/2, TILE/2 - 3);
+                ctx.bezierCurveTo(-TILE/4, TILE/2, -TILE/2, 0, TILE/2, -TILE/2 + 3);
+                ctx.fill();
+            } else {
+                ctx.roundRect(-size/2, -size/2, size, size, r);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = mainColor; 
+            const ridgeH = TILE * 0.5;
+            const ridgeW = TILE * 0.92; 
+            
+            if(isHead) {
+                 ctx.beginPath();
+                 ctx.ellipse(-2, 0, ridgeW/2 - 2, ridgeH/2, 0, 0, Math.PI*2);
+                 ctx.fill();
+            } else if (isTail) {
+                 ctx.beginPath();
+                 ctx.moveTo(TILE/2, -ridgeH/2);
+                 ctx.lineTo(TILE/2, ridgeH/2);
+                 ctx.lineTo(0, 0); 
+                 ctx.fill();
+            } else {
+                 ctx.beginPath();
+                 ctx.roundRect(-ridgeW/2, -ridgeH/2, ridgeW, ridgeH, 4);
+                 ctx.fill();
+            }
+            
+            if (isHead) {
+                ctx.strokeStyle = "#e74c3c";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                const tip = TILE/2; 
+                ctx.moveTo(tip - 2, 0); 
+                ctx.lineTo(tip + 4, 0); 
+                ctx.lineTo(tip + 7, -2);
+                ctx.moveTo(tip + 4, 0);
+                ctx.lineTo(tip + 7, 2);
+                ctx.stroke();
+
+                ctx.fillStyle = "#000";
+                const eyeX = TILE * 0.2;
+                const eyeY = TILE * 0.25; 
+                const eyeSize = 2;
+                ctx.beginPath(); ctx.arc(eyeX, -eyeY, eyeSize, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeSize, 0, Math.PI*2); ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    }
+    
+    function updateScoreUI() {
+        scoreEl.innerText = `🍎 ${score}`;
+        updateSnakeColor();
+    }
+
+    function resetGame() {
+        snake = [
+            { x: 10, y: 10 },
+            { x: 10, y: 11 },
+            { x: 10, y: 12 }
+        ];
+        direction = { x: 0, y: -1 }; 
+        nextDirection = { x: 0, y: -1 };
+        apples = [];
+        score = 0;
+        eatenCount = 0;
+        redApplesEatenBatch = 0;
+        speed = 120;
+        isGameOver = false;
+        isVictory = false;
+        fireworks = [];
+        updateSnakeColor();
+        
+        spawnApple('red', MAX_RED_APPLES); 
+        updateScoreUI();
+        
+        lastTime = performance.now();
+        dropCounter = 0;
+    }
+
+    function spawnApple(type, count = 1) {
+        let added = 0;
+        while(added < count) {
+            let pos;
+            let safe = false;
+            let attempts = 0;
+            while(!safe && attempts < 100) {
+                attempts++;
+                pos = { x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS) };
+                const onSnake = snake.some(s => s.x === pos.x && s.y === pos.y);
+                const onApple = apples.some(a => a.x === pos.x && a.y === pos.y);
+                if (!onSnake && !onApple) safe = true;
+            }
+            if(safe) {
+                apples.push({ ...pos, type });
+                added++;
+            } else {
+                break; 
+            }
+        }
+    }
+
+    function manageGreenApples(shouldRelocate = false) {
+        const targetCount = Math.floor(score / 10);
+        if (shouldRelocate) {
+            apples = apples.filter(a => a.type !== 'green');
+            if (targetCount > 0) spawnApple('green', targetCount);
+        } else {
+            const currentGreen = apples.filter(a => a.type === 'green').length;
+            if (currentGreen < targetCount) {
+                spawnApple('green', targetCount - currentGreen);
+            } else if (currentGreen > targetCount) {
+                let diff = currentGreen - targetCount;
+                for(let i=apples.length-1; i>=0 && diff>0; i--) {
+                    if(apples[i].type === 'green') {
+                        apples.splice(i, 1);
+                        diff--;
+                    }
+                }
+            }
+        }
+    }
+
+    function update(deltaTime) {
+        if (isVictory) {
+            if (Math.random() < 0.1) fireworks.push(new Firework(Math.random()*400, Math.random()*400, mainColor));
+            return;
+        }
+
+        if (isGameOver || !isPlaying) return;
+
+        dropCounter += deltaTime;
+        if (dropCounter > speed) {
+            dropCounter = 0;
+            move();
+        }
+    }
+
+    function move() {
+        if (nextDirection.x !== 0 && direction.x === 0) direction = nextDirection;
+        if (nextDirection.y !== 0 && direction.y === 0) direction = nextDirection;
+
+        const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+        if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS || snake.some(s => s.x === head.x && s.y === head.y)) {
+            setGameOver();
+            return;
+        }
+
+        snake.unshift(head);
+
+        let ate = false;
+        const appleIdx = apples.findIndex(a => a.x === head.x && a.y === head.y);
+        
+        if (appleIdx !== -1) {
+            const apple = apples[appleIdx];
+            apples.splice(appleIdx, 1);
+            ate = true;
+            
+            if (apple.type === 'red') {
+                playKakSound(false); 
+                
+                score++;
+                eatenCount++;
+                redApplesEatenBatch++;
+
+                if (score > 0 && score % 10 === 0) {
+                   fireworks.push(new Firework(head.x*TILE, head.y*TILE, "#fff"));
+                }
+
+                if (score >= VICTORY_SCORE) {
+                    setVictory();
+                    return;
+                }
+
+                const currentReds = apples.filter(a => a.type === 'red').length;
+                if (currentReds < MAX_RED_APPLES) spawnApple('red', 1);
+
+                if (redApplesEatenBatch >= 4) {
+                    manageGreenApples(true);
+                    redApplesEatenBatch = 0;
+                } else {
+                    manageGreenApples(false);
+                }
+                if (speed > 50) speed -= 1;
+
+            } else {
+                playKakSound(true); 
+                score--; 
+                if (snake.length > 2) snake.pop(); 
+                manageGreenApples(true); 
+            }
+            updateScoreUI();
+        }
+
+        if (!ate) snake.pop();
+    }
+
+    let frameCounterLoop = 0;
+    function loop(time) {
+        const deltaTime = time - lastTime;
+        lastTime = time;
+        frameCounter = frameCounterLoop++;
+
+        update(deltaTime);
+        
+        ctx.fillStyle = "#121212"; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        apples.forEach(a => drawApple(a.x, a.y, a.type));
+        drawSnake(); 
+
+        fireworks.forEach(fw => { fw.update(); fw.draw(ctx); });
+        fireworks = fireworks.filter(fw => fw.particles.length > 0);
+
+        requestAnimationFrame(loop);
+    }
+
+    function setVictory() {
+        isVictory = true;
+        isGameOver = true;
+        document.getElementById('uiTitle').innerText = "";
+        document.getElementById('uiDesc').innerText = `최종 점수: ${score}점`;
+        const vText = document.getElementById('victoryText');
+        vText.style.display = 'block'; 
+        
+        // [랭킹 및 UI 처리]
+        document.getElementById('inputArea').style.display = 'block';
+        document.getElementById('saveRankBtn').style.display = 'inline-block';
+        document.getElementById('saveRankBtn').disabled = false;
+        document.getElementById('saveRankBtn').innerText = "기록 저장";
+        document.getElementById('mainBtn').innerText = "다시 하기";
+        
+        document.getElementById('uiOverlay').classList.remove('hidden');
+        loadSnakeRankings(); // 랭킹 로드
+    }
+
+    function setGameOver() {
+        isGameOver = true;
+        isPlaying = false;
+        bgm.pause();
+        playTone(100, 'sawtooth', 0.4);
+
+        document.getElementById('victoryText').style.display = 'none';
+        document.getElementById('uiTitle').innerText = "게임오버";
+        document.getElementById('uiDesc').innerText = `점수: ${score}점`;
+        
+        // [랭킹 및 UI 처리]
+        document.getElementById('inputArea').style.display = 'block';
+        document.getElementById('saveRankBtn').style.display = 'inline-block';
+        document.getElementById('saveRankBtn').disabled = false;
+        document.getElementById('saveRankBtn').innerText = "기록 저장";
+        document.getElementById('mainBtn').innerText = "다시 시작";
+        
+        document.getElementById('uiOverlay').classList.remove('hidden');
+        loadSnakeRankings(); // 랭킹 로드
+    }
+    
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playKakSound(isGreen) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      
+      const bufferSize = audioCtx.sampleRate * 0.1; 
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      
+      const noiseFilter = audioCtx.createBiquadFilter();
+      noiseFilter.type = 'highpass';
+      noiseFilter.frequency.value = 1000;
+      
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+      
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+      noise.start();
+
+      const osc = audioCtx.createOscillator();
+      const oscGain = audioCtx.createGain();
+      
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(isGreen ? 250 : 150, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.08);
+      
+      oscGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+      
+      osc.connect(oscGain);
+      oscGain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    function playTone(freq, type, duration=0.1) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    window.addEventListener('keydown', e => {
+        if (!isPlaying && !isVictory) return;
+        switch(e.key) {
+            case 'ArrowUp': case 'w': case 'W': nextDirection = {x:0, y:-1}; break;
+            case 'ArrowDown': case 's': case 'S': nextDirection = {x:0, y:1}; break;
+            case 'ArrowLeft': case 'a': case 'A': nextDirection = {x:-1, y:0}; break;
+            case 'ArrowRight': case 'd': case 'D': nextDirection = {x:1, y:0}; break;
+        }
+    });
+
+    const uiOverlay = document.getElementById('uiOverlay');
+    const nameInput = document.getElementById('nameInput');
+    const mainBtn = document.getElementById('mainBtn');
+    
+    // 버튼 이벤트 리스너 연결
+    mainBtn.addEventListener('click', () => {
+        if (isGameOver || isVictory) {
+            resetGame();
+            isPlaying = true;
+            bgm.currentTime = 0;
+            bgm.play();
+            uiOverlay.classList.add('hidden');
+        } else {
+            const val = nameInput.value.trim();
+            playerName = val || "Player";
+            resetGame();
+            isPlaying = true;
+            bgm.play().catch(()=>{});
+            uiOverlay.classList.add('hidden');
+        }
+    });
+
+    // 저장 버튼 이벤트 연결
+    document.getElementById("saveRankBtn").addEventListener('click', window.saveMyScore);
+
+    document.getElementById('volume').addEventListener('input', (e) => {
+        bgm.volume = e.target.value / 100;
+    });
+
+    if('ontouchstart' in window) {
+        const handleTouch = (dir) => (e) => {
+            e.preventDefault();
+            if(!isPlaying) return;
+            if(dir==='Up') nextDirection={x:0,y:-1};
+            if(dir==='Down') nextDirection={x:0,y:1};
+            if(dir==='Left') nextDirection={x:-1,y:0};
+            if(dir==='Right') nextDirection={x:1,y:0};
+        };
+        document.getElementById('btnUp').addEventListener('touchstart', handleTouch('Up'));
+        document.getElementById('btnDown').addEventListener('touchstart', handleTouch('Down'));
+        document.getElementById('btnLeft').addEventListener('touchstart', handleTouch('Left'));
+        document.getElementById('btnRight').addEventListener('touchstart', handleTouch('Right'));
+    }
+
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
