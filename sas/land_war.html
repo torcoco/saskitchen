@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>땅따묵기: TITAN (BGM Ver)</title>
+  <title>땅따묵기: TITAN (Ranked)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <style>
     * { box-sizing: border-box; }
@@ -75,6 +75,8 @@
       pointer-events: none;
       z-index: 5;
     }
+    
+    /* 오버레이 (게임오버/랭킹 등) */
     .overlay {
       position: absolute;
       inset: 0;
@@ -82,34 +84,51 @@
       align-items: center;
       justify-content: center;
       z-index: 20;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(4px);
     }
     .overlay-inner {
       pointer-events: auto;
-      padding: 20px 30px;
+      padding: 24px 32px;
       border-radius: 16px;
       background: rgba(15, 23, 42, 0.95);
       border: 1px solid rgba(56, 189, 248, 0.3);
       text-align: center;
-      min-width: 260px;
+      min-width: 280px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
     .overlay-title {
       font-size: 20px;
-      margin-bottom: 8px;
       color: #fff;
       font-weight: 700;
     }
     .overlay-sub {
       font-size: 14px;
       color: #cbd5e1;
-      margin-bottom: 16px;
       white-space: pre-line;
       line-height: 1.4;
     }
+    
+    /* 입력 필드 스타일 */
+    #rankNameInput {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #1e293b;
+      color: white;
+      font-size: 16px;
+      text-align: center;
+      outline: none;
+    }
+    #rankNameInput:focus {
+      border-color: #38bdf8;
+    }
+
     .overlay-inner button {
-      padding: 8px 20px;
+      padding: 10px 20px;
       border-radius: 8px;
       border: none;
       background: linear-gradient(135deg, #22c55e, #16a34a);
@@ -119,6 +138,32 @@
       transition: transform 0.1s;
     }
     .overlay-inner button:active { transform: scale(0.95); }
+    .btn-secondary {
+      background: #475569 !important;
+    }
+
+    /* 리더보드 테이블 */
+    .rank-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin: 10px 0;
+      font-size: 13px;
+      text-align: left;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0f172a;
+    }
+    .rank-item {
+      padding: 6px 12px;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+    }
+    .rank-item:last-child { border-bottom: none; }
+    .rank-item span:first-child { color: #38bdf8; font-weight: bold; margin-right: 8px; }
+    .rank-item .r-name { flex: 1; color: #e2e8f0; }
+    .rank-item .r-score { color: #fbbf24; font-weight: bold; }
+
     .start-layer {
       position: absolute;
       inset: 0;
@@ -141,17 +186,19 @@
       border: 1px solid rgba(255,255,255,0.1);
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
-    #startButton {
-      padding: 10px 24px;
+    #startButton, #showRankBtn {
+      padding: 10px 20px;
       border-radius: 6px;
       border: none;
       cursor: pointer;
       font-size: 14px;
       font-weight: 600;
       color: #fff;
-      background: #3b82f6;
     }
+    #startButton { background: #3b82f6; }
     #startButton:hover { background: #2563eb; }
+    #showRankBtn { background: #64748b; }
+    #showRankBtn:hover { background: #475569; }
 
     .joystick {
       margin-top: 16px;
@@ -237,6 +284,7 @@
   <div class="wrap">
     <h1>땅따묵기: <span style="color:#a855f7">TITAN</span></h1>
     
+    <!-- 오디오 설정 -->
     <audio id="bgm" loop>
       <source src="./landwarbgm.mp3" type="audio/mp3">
     </audio>
@@ -253,17 +301,32 @@
       <canvas id="game" width="640" height="640"></canvas>
       <div class="loading-msg" id="loadingMsg">이미지 불러오는 중...</div>
 
+      <!-- 오버레이 (게임오버 & 랭킹 등록) -->
       <div class="overlay" id="overlay">
-        <div class="overlay-inner">
+        <div class="overlay-inner" id="overlayInner">
           <div class="overlay-title" id="overlayTitle">결과</div>
           <div class="overlay-sub" id="overlaySub">내용</div>
-          <button id="overlayRestart">다음</button>
+          
+          <!-- 랭킹 등록 폼 (게임오버 시 표시) -->
+          <div id="rankForm" style="display:none; flex-direction:column; gap:8px;">
+            <input id="rankNameInput" type="text" maxlength="5" placeholder="이름 (5글자)" />
+            <button id="submitRankBtn">점수 등록</button>
+          </div>
+
+          <!-- 랭킹 리스트 (평소엔 숨김) -->
+          <div id="rankListArea" class="rank-list" style="display:none;"></div>
+
+          <div style="display:flex; gap:8px; justify-content:center;">
+            <button id="overlayRestart">다음</button>
+            <button id="closeRankBtn" class="btn-secondary" style="display:none;">닫기</button>
+          </div>
         </div>
       </div>
 
       <div class="start-layer" id="startLayer">
         <div class="start-inner">
           <button id="startButton">START GAME</button>
+          <button id="showRankBtn">🏆 랭킹 보기</button>
         </div>
       </div>
     </div>
@@ -276,13 +339,132 @@
 
     <div class="controls-hint">
       <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> 또는 <span class="key">화살표</span><br>
-      음악과 함께하는 TITAN 모드
+      Top 20 리더보드 도전!
     </div>
 
     <button id="restartBtn">처음부터 다시</button>
   </div>
 
-  <script>
+  <script type="module">
+    // --- Firebase 설정 ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+    let currentUser = null;
+
+    // 인증 초기화
+    const initAuth = async () => {
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
+      }
+    };
+    initAuth();
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+    });
+
+    // --- 리더보드 관련 함수 ---
+    const rankForm = document.getElementById("rankForm");
+    const rankNameInput = document.getElementById("rankNameInput");
+    const submitRankBtn = document.getElementById("submitRankBtn");
+    const rankListArea = document.getElementById("rankListArea");
+    const showRankBtn = document.getElementById("showRankBtn");
+    const closeRankBtn = document.getElementById("closeRankBtn");
+
+    async function saveScore(name, score, stage) {
+      if (!currentUser) return;
+      try {
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'landwar_scores'), {
+          name: name,
+          score: score,
+          stage: stage,
+          timestamp: Date.now()
+        });
+        alert("점수가 등록되었습니다!");
+        showLeaderboard(); // 등록 후 바로 랭킹 보여주기
+      } catch (e) {
+        console.error("Error adding document: ", e);
+        alert("점수 등록 실패: " + e.message);
+      }
+    }
+
+    async function getLeaderboard() {
+        if (!currentUser) return [];
+        try {
+            const querySnapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'landwar_scores'));
+            const scores = [];
+            querySnapshot.forEach((doc) => {
+                scores.push(doc.data());
+            });
+            // 클라이언트 사이드 정렬 (Rule 2 준수)
+            scores.sort((a, b) => b.score - a.score);
+            return scores.slice(0, 20);
+        } catch (e) {
+            console.error("Error getting documents: ", e);
+            return [];
+        }
+    }
+
+    async function showLeaderboard() {
+        overlayTitle.textContent = "🏆 TOP 20 랭킹";
+        overlaySub.textContent = "불러오는 중...";
+        rankForm.style.display = "none";
+        overlayRestart.style.display = "none";
+        closeRankBtn.style.display = "inline-block";
+        overlay.style.display = "flex";
+        
+        const scores = await getLeaderboard();
+        
+        overlaySub.textContent = "";
+        rankListArea.innerHTML = "";
+        rankListArea.style.display = "block";
+
+        if (scores.length === 0) {
+            rankListArea.innerHTML = "<div style='padding:10px; text-align:center; color:#94a3b8;'>기록이 없습니다.</div>";
+        } else {
+            scores.forEach((s, i) => {
+                const div = document.createElement("div");
+                div.className = "rank-item";
+                div.innerHTML = `<span>${i+1}</span> <span class="r-name">${s.name}</span> <span class="r-score">${s.score}</span>`;
+                rankListArea.appendChild(div);
+            });
+        }
+    }
+
+    // 버튼 이벤트 연결
+    submitRankBtn.addEventListener("click", () => {
+        const name = rankNameInput.value.trim();
+        if (!name) {
+            alert("이름을 입력해주세요.");
+            return;
+        }
+        // 전역변수 score, stage 사용
+        saveScore(name, window.gameScore, window.gameStage);
+    });
+
+    showRankBtn.addEventListener("click", () => {
+        showLeaderboard();
+    });
+
+    closeRankBtn.addEventListener("click", () => {
+        overlay.style.display = "none";
+        rankListArea.style.display = "none";
+        closeRankBtn.style.display = "none";
+        overlayRestart.style.display = "inline-block";
+        // 만약 게임 오버 상황이 아니면 메인으로
+    });
+
+
+    // --- 게임 로직 (기존 코드 통합) ---
     (function () {
       const canvas = document.getElementById("game");
       const ctx = canvas.getContext("2d");
@@ -321,7 +503,7 @@
           bgm.play().then(() => {
             soundStarted = true;
           }).catch(e => {
-            console.log("Audio play failed (waiting for interaction):", e);
+            console.log("Audio play failed:", e);
           });
         }
       }
@@ -364,6 +546,10 @@
       let lives = MAX_LIVES;
       let stage = 1;
       let running = false;
+
+      // 전역 변수로 노출 (리더보드용)
+      window.gameScore = 0;
+      window.gameStage = 1;
 
       const input = { x: 0, y: 0 };
       const keys = { w: false, a: false, s: false, d: false, up: false, left: false, down: false, right: false };
@@ -432,7 +618,7 @@
 
       function bindInputEvents() {
         window.addEventListener("keydown", e => {
-          initAudio(); // [BGM] 키보드 입력 시 재생
+          initAudio(); 
           const k = e.key.toLowerCase();
           if(k === 'w' || k === 'arrowup') keys.w = true;
           if(k === 'a' || k === 'arrowleft') keys.a = true;
@@ -487,7 +673,7 @@
         };
 
         const start = (e) => {
-          initAudio(); // [BGM] 조이스틱 터치 시 재생
+          initAudio(); 
           dragging = true;
           base.setAttribute("data-active", "true");
           rect = base.getBoundingClientRect();
@@ -534,6 +720,9 @@
           score = 0;
           lives = MAX_LIVES;
         }
+        window.gameScore = score;
+        window.gameStage = s;
+
         board = createEmptyBoard();
         player.x = cols / 2;
         player.y = 0; 
@@ -547,7 +736,6 @@
 
       function spawnEnemies(s) {
         enemies = [];
-        
         let basicCount = 0;
         let giantCount = 0;
 
@@ -568,7 +756,6 @@
             const baseSpd = isGiant ? GIANT_SPEED : BASIC_SPEED;
             const radius = isGiant ? GIANT_RADIUS : BASIC_RADIUS;
 
-            // [FIX] 랜덤 위치 소환 (중앙 부근 50% 영역 내) - 0,0 끼임 방지
             const range = 300; 
             const randX = (canvas.width/2) + (Math.random() - 0.5) * range;
             const randY = (canvas.height/2) + (Math.random() - 0.5) * range;
@@ -605,14 +792,12 @@
          let loopCount = 0; 
          while(loopCount < 200) {
             loopCount++;
-            
             if(gridX0 >= 0 && gridX0 < cols && gridY0 >= 0 && gridY0 < rows) {
                if(board[gridY0][gridX0] === 0) {
                   board[gridY0][gridX0] = 2;
                   player.trail.push({x: gridX0, y: gridY0});
                }
             }
-
             if (gridX0 === gridX1 && gridY0 === gridY1) break;
             const e2 = 2 * err;
             if (e2 > -dy) { err -= dy; gridX0 += sx; }
@@ -720,7 +905,6 @@
                 const dx = e2.x - e1.x;
                 const dy = e2.y - e1.y;
                 let dist = Math.hypot(dx, dy);
-                
                 if (dist < 0.001) dist = 0.001; 
 
                 const minDist = e1.radius + e2.radius;
@@ -899,9 +1083,21 @@
         
         if (lives <= 0) {
           running = false;
-          showOverlay("GAME OVER", `최종 점수: ${score}`, () => {
-            location.reload();
-          });
+          // 게임오버 시: 랭킹 등록 폼 표시
+          overlayTitle.textContent = "GAME OVER";
+          overlaySub.textContent = `최종 점수: ${score}\n명예의 전당에 이름을 남기세요!`;
+          
+          rankForm.style.display = "flex";
+          rankListArea.style.display = "none"; // 리스트는 등록 후 표시
+          closeRankBtn.style.display = "none";
+          overlayRestart.style.display = "inline-block";
+          overlayRestart.textContent = "등록 안 함"; // 그냥 다시하기
+          
+          overlay.style.display = "flex";
+          
+          overlayRestart.onclick = () => {
+             location.reload();
+          };
         }
       }
 
@@ -910,11 +1106,21 @@
         scoreEl.textContent = score;
         livesEl.textContent = lives;
         stageEl.textContent = stage;
+        window.gameScore = score;
+        window.gameStage = stage;
       }
 
       function showOverlay(title, sub, callback) {
         overlayTitle.textContent = title;
         overlaySub.textContent = sub;
+        
+        // 일반 클리어 메시지일 땐 랭킹 폼 숨김
+        rankForm.style.display = "none";
+        rankListArea.style.display = "none";
+        closeRankBtn.style.display = "none";
+        overlayRestart.style.display = "inline-block";
+        overlayRestart.textContent = "다음";
+        
         overlay.style.display = "flex";
         overlayRestart.onclick = callback;
       }
