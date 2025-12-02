@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>땅따묵기: TITAN (Fixed)</title>
+  <title>땅따묵기: TITAN (BGM Ver)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <style>
     * { box-sizing: border-box; }
@@ -29,6 +29,7 @@
       flex-direction: column;
       align-items: center;
       gap: 12px;
+      position: relative;
     }
     h1 {
       margin: 0;
@@ -207,11 +208,40 @@
       font-weight: 600;
       display: none;
     }
+
+    /* 뮤트 버튼 스타일 */
+    #muteBtn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.2);
+      background: rgba(15, 23, 42, 0.8);
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s;
+    }
+    #muteBtn:active {
+      transform: scale(0.9);
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>땅따묵기: <span style="color:#a855f7">TITAN</span></h1>
+    
+    <audio id="bgm" loop>
+      <source src="./landwarbgm.mp3" type="audio/mp3">
+    </audio>
+    <button id="muteBtn">🔇</button>
+
     <div class="hud">
       <div class="badge">STAGE <span id="stage" style="color:#fbbf24">1</span></div>
       <div class="badge">SCORE <span id="score">0</span></div>
@@ -246,7 +276,7 @@
 
     <div class="controls-hint">
       <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> 또는 <span class="key">화살표</span><br>
-      버그 수정: 소환 위치 분산 (끼임 방지)
+      음악과 함께하는 TITAN 모드
     </div>
 
     <button id="restartBtn">처음부터 다시</button>
@@ -264,6 +294,38 @@
 
       let revealImage = new Image();
       const loadingMsg = document.getElementById("loadingMsg");
+
+      // --- 오디오 관련 로직 ---
+      const bgm = document.getElementById("bgm");
+      const muteBtn = document.getElementById("muteBtn");
+      let isMuted = true;
+      let soundStarted = false;
+
+      bgm.volume = 0.4; // 볼륨 40%
+
+      muteBtn.addEventListener("click", () => {
+        isMuted = !isMuted;
+        if(isMuted) {
+          bgm.pause();
+          muteBtn.textContent = "🔇";
+        } else {
+          bgm.play().catch(e => console.log(e));
+          muteBtn.textContent = "🔊";
+        }
+      });
+
+      function initAudio() {
+        if (!soundStarted) {
+          isMuted = false;
+          muteBtn.textContent = "🔊";
+          bgm.play().then(() => {
+            soundStarted = true;
+          }).catch(e => {
+            console.log("Audio play failed (waiting for interaction):", e);
+          });
+        }
+      }
+      // -----------------------
 
       const cols = 80;
       const rows = 80;
@@ -370,6 +432,7 @@
 
       function bindInputEvents() {
         window.addEventListener("keydown", e => {
+          initAudio(); // [BGM] 키보드 입력 시 재생
           const k = e.key.toLowerCase();
           if(k === 'w' || k === 'arrowup') keys.w = true;
           if(k === 'a' || k === 'arrowleft') keys.a = true;
@@ -424,6 +487,7 @@
         };
 
         const start = (e) => {
+          initAudio(); // [BGM] 조이스틱 터치 시 재생
           dragging = true;
           base.setAttribute("data-active", "true");
           rect = base.getBoundingClientRect();
@@ -504,8 +568,7 @@
             const baseSpd = isGiant ? GIANT_SPEED : BASIC_SPEED;
             const radius = isGiant ? GIANT_RADIUS : BASIC_RADIUS;
 
-            // [FIX] 랜덤 위치 소환 (중앙 부근 50% 영역 내)
-            // 화면 중앙 320, 320을 기준으로 +- 150 범위 내에서 랜덤
+            // [FIX] 랜덤 위치 소환 (중앙 부근 50% 영역 내) - 0,0 끼임 방지
             const range = 300; 
             const randX = (canvas.width/2) + (Math.random() - 0.5) * range;
             const randY = (canvas.height/2) + (Math.random() - 0.5) * range;
@@ -617,7 +680,6 @@
         const startY = Math.floor((e.y - e.radius) / cellSize);
         const endY = Math.floor((e.y + e.radius) / cellSize);
 
-        // 범위 밖 방어 코드
         if (startX >= cols || endX < 0 || startY >= rows || endY < 0) return true;
 
         for (let y = startY; y <= endY; y++) {
@@ -659,7 +721,6 @@
                 const dy = e2.y - e1.y;
                 let dist = Math.hypot(dx, dy);
                 
-                // [FIX] 0 나누기 방지
                 if (dist < 0.001) dist = 0.001; 
 
                 const minDist = e1.radius + e2.radius;
