@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>땅따묵기</title>
+  <title>땅따묵기: TITAN (Fixed)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <style>
     * { box-sizing: border-box; }
@@ -34,33 +34,45 @@
       margin: 0;
       font-size: 22px;
       letter-spacing: 0.04em;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
     .hud {
       display: flex;
-      gap: 16px;
+      gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
-      font-size: 14px;
+      font-size: 13px;
     }
     .badge {
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(148, 163, 184, 0.5);
-      backdrop-filter: blur(8px);
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
     .game-shell {
       position: relative;
       display: inline-block;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      border: 2px solid #374151;
     }
     canvas {
-      background: #020617;
-      border-radius: 12px;
-      border: 2px solid #4b5563;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+      background: #111;
       image-rendering: pixelated;
-      max-width: 100%;
       display: block;
+      max-width: 100%;
+    }
+    .loading-msg {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 14px;
+      color: #94a3b8;
+      pointer-events: none;
+      z-index: 5;
     }
     .overlay {
       position: absolute;
@@ -68,44 +80,53 @@
       display: none;
       align-items: center;
       justify-content: center;
-      pointer-events: none;
+      z-index: 20;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
     }
     .overlay-inner {
       pointer-events: auto;
-      padding: 16px 24px;
+      padding: 20px 30px;
       border-radius: 16px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.3);
       text-align: center;
-      min-width: 240px;
+      min-width: 260px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
     .overlay-title {
       font-size: 20px;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
+      color: #fff;
+      font-weight: 700;
     }
     .overlay-sub {
-      font-size: 13px;
-      color: #9ca3af;
-      margin-bottom: 10px;
+      font-size: 14px;
+      color: #cbd5e1;
+      margin-bottom: 16px;
       white-space: pre-line;
+      line-height: 1.4;
     }
     .overlay-inner button {
-      margin-top: 4px;
-      padding: 6px 14px;
-      border-radius: 999px;
+      padding: 8px 20px;
+      border-radius: 8px;
       border: none;
-      background: #22c55e;
-      color: #022c22;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #fff;
       font-weight: 600;
       cursor: pointer;
+      transition: transform 0.1s;
     }
+    .overlay-inner button:active { transform: scale(0.95); }
     .start-layer {
       position: absolute;
       inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      pointer-events: none;
+      z-index: 20;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(2px);
     }
     .start-inner {
       pointer-events: auto;
@@ -113,169 +134,106 @@
       gap: 8px;
       flex-wrap: wrap;
       justify-content: center;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(15,23,42,0.95);
-      border: 1px solid rgba(55,65,81,0.8);
-    }
-    #nicknameInput {
-      padding: 8px 14px;
-      border-radius: 999px;
-      border: 1px solid #4b5563;
-      background: #020617;
-      color: #e5e7eb;
-      font-size: 13px;
-      min-width: 140px;
-      outline: none;
-    }
-    #nicknameInput::placeholder {
-      color: #6b7280;
-    }
-    #startButton,
-    #localRankButton {
-      padding: 8px 14px;
-      border-radius: 999px;
-      border: none;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      box-shadow: 0 8px 16px rgba(15, 23, 42, 0.6);
-      white-space: nowrap;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     #startButton {
-      background: #22c55e;
-      color: #022c22;
+      padding: 10px 24px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: #3b82f6;
     }
-    #startButton:hover { filter: brightness(1.05); }
-    #localRankButton {
-      background: #0ea5e9;
-      color: #0f172a;
-    }
-    #localRankButton:hover { filter: brightness(1.05); }
+    #startButton:hover { background: #2563eb; }
 
     .joystick {
-      margin-top: 10px;
+      margin-top: 16px;
       display: flex;
       justify-content: center;
       touch-action: none;
     }
     .stick-base {
-      width: 160px;
-      height: 160px;
-      border-radius: 999px;
-      background: radial-gradient(circle at top, #111827, #020617);
-      border: 2px solid #4b5563;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.1);
       position: relative;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
       touch-action: none;
     }
     .stick-handle {
-      width: 80px;
-      height: 80px;
-      border-radius: 999px;
-      background: radial-gradient(circle at top, #0f172a, #020617);
-      border: 2px solid #9ca3af;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.8);
       position: absolute;
-      left: 50%;
-      top: 50%;
+      left: 50%; top: 50%;
       transform: translate(-50%, -50%);
-      box-shadow: 0 6px 18px rgba(15,23,42,0.8);
-      touch-action: none;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+      pointer-events: none;
     }
-
-    .item-legend {
-      margin-top: 10px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: rgba(15,23,42,0.85);
-      border: 1px solid rgba(55,65,81,0.8);
-      font-size: 12px;
-      max-width: 640px;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
-    .legend-item:last-child { margin-bottom: 0; }
-    .legend-icon {
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      background: #020617;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-    }
-    .legend-text { color: #e5e7eb; }
-
-    .hint {
+    .controls-hint {
+      margin-top: 12px;
       font-size: 13px;
-      color: #9ca3af;
+      color: #94a3b8;
       text-align: center;
-      max-width: 640px;
+      line-height: 1.5;
     }
-    .hint kbd {
+    .key {
       display: inline-block;
       padding: 2px 6px;
       border-radius: 4px;
-      border: 1px solid #6b7280;
-      font-size: 11px;
-      background: rgba(15, 23, 42, 0.9);
+      background: #334155;
+      color: #fff;
+      font-family: monospace;
+      font-weight: bold;
+      border-bottom: 2px solid #1e293b;
     }
-
     #restartBtn {
-      margin-top: 4px;
-      padding: 8px 16px;
-      border-radius: 999px;
+      margin-top: 8px;
+      padding: 8px 20px;
+      border-radius: 99px;
       border: none;
       cursor: pointer;
       font-size: 14px;
-      background: #22c55e;
-      color: #022c22;
+      background: #ef4444;
+      color: white;
       font-weight: 600;
-      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.4);
       display: none;
-    }
-    #restartBtn:hover {
-      filter: brightness(1.05);
-      transform: translateY(-1px);
-    }
-    #restartBtn:active {
-      transform: translateY(0);
-      box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>땅따묵기</h1>
+    <h1>땅따묵기: <span style="color:#a855f7">TITAN</span></h1>
     <div class="hud">
-      <div class="badge">스테이지: <span id="stage">1</span></div>
-      <div class="badge">점수: <span id="score">0</span></div>
-      <div class="badge">채운 땅: <span id="fill">0</span>%</div>
-      <div class="badge">목표: <span id="target">90</span>%</div>
-      <div class="badge">목숨: <span id="lives">3</span></div>
+      <div class="badge">STAGE <span id="stage" style="color:#fbbf24">1</span></div>
+      <div class="badge">SCORE <span id="score">0</span></div>
+      <div class="badge">AREA <span id="fill" style="color:#34d399">0</span>% / <span id="target">80</span>%</div>
+      <div class="badge">LIFE <span id="lives" style="color:#f87171">3</span></div>
     </div>
 
     <div class="game-shell">
       <canvas id="game" width="640" height="640"></canvas>
+      <div class="loading-msg" id="loadingMsg">이미지 불러오는 중...</div>
 
       <div class="overlay" id="overlay">
         <div class="overlay-inner">
-          <div class="overlay-title" id="overlayTitle">게임 종료</div>
-          <div class="overlay-sub" id="overlaySub"></div>
-          <button id="overlayRestart">확인</button>
+          <div class="overlay-title" id="overlayTitle">결과</div>
+          <div class="overlay-sub" id="overlaySub">내용</div>
+          <button id="overlayRestart">다음</button>
         </div>
       </div>
 
       <div class="start-layer" id="startLayer">
         <div class="start-inner">
-          <input id="nicknameInput" maxlength="12" placeholder="닉네임 입력" />
-          <button id="startButton">게임 시작</button>
-          <button id="localRankButton">로컬 등수</button>
+          <button id="startButton">START GAME</button>
         </div>
       </div>
     </div>
@@ -286,27 +244,9 @@
       </div>
     </div>
 
-    <div class="item-legend">
-      <div class="legend-item">
-        <span class="legend-icon">⚡</span>
-        <span class="legend-text">속도 버프: 30초 동안 게임 속도 +10%</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-icon">❤</span>
-        <span class="legend-text">목숨 +1: 현재 남은 목숨이 1 증가</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-icon">!</span>
-        <span class="legend-text">위험: 1적(빨간 원형 적) 1마리가 추가 등장</span>
-      </div>
-    </div>
-
-    <div class="hint">
-      <p>
-        <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 로 이동하고,<br />
-        화면의 90%를 채우면 다음 스테이지로 진행해.<br />
-        스테이지 1~3을 모두 클리어하면 진짜 보상(?)이 기다리고 있어.
-      </p>
+    <div class="controls-hint">
+      <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> 또는 <span class="key">화살표</span><br>
+      버그 수정: 소환 위치 분산 (끼임 방지)
     </div>
 
     <button id="restartBtn">처음부터 다시</button>
@@ -317,18 +257,26 @@
       const canvas = document.getElementById("game");
       const ctx = canvas.getContext("2d");
 
+      const bgCanvas = document.createElement("canvas");
+      bgCanvas.width = canvas.width;
+      bgCanvas.height = canvas.height;
+      const bgCtx = bgCanvas.getContext("2d");
+
+      let revealImage = new Image();
+      const loadingMsg = document.getElementById("loadingMsg");
+
       const cols = 80;
       const rows = 80;
       const cellSize = canvas.width / cols;
 
-      const MIN_SPEED = 4;
-      const MAX_SPEED = 5;
-      const SPEED_TYPE2 = 2;
-
-      const TARGET_PERCENT = 90;
+      const TARGET_PERCENT = 80;
       const MAX_LIVES = 3;
-      const BUFF_DURATION = 30000;
-      const SPEED_BUFF_FACTOR = 1.1;
+      
+      const BASIC_SPEED = 5.0;            
+      const BASIC_RADIUS = cellSize * 1.5; 
+      
+      const GIANT_SPEED = BASIC_SPEED / 5.0; 
+      const GIANT_RADIUS = BASIC_RADIUS * 5.0; 
 
       const stageEl = document.getElementById("stage");
       const scoreEl = document.getElementById("score");
@@ -336,188 +284,172 @@
       const targetEl = document.getElementById("target");
       const livesEl = document.getElementById("lives");
       const restartBtn = document.getElementById("restartBtn");
-
+      
       const overlay = document.getElementById("overlay");
       const overlayTitle = document.getElementById("overlayTitle");
       const overlaySub = document.getElementById("overlaySub");
       const overlayRestart = document.getElementById("overlayRestart");
-
+      
       const startLayer = document.getElementById("startLayer");
       const startButton = document.getElementById("startButton");
-      const localRankButton = document.getElementById("localRankButton");
-      const nicknameInput = document.getElementById("nicknameInput");
-
-      const joystickArea = document.getElementById("joystickArea");
-      const joystickHandle = document.getElementById("stickHandle");
-
-      let couponCanvas = null;
-      let couponCtx = null;
-      let lastCouponStage = null;
 
       targetEl.textContent = TARGET_PERCENT;
 
-      let board;
-      let player;
+      let board; 
+      let player = { x: 1, y: 0, trail: [] };
       let enemies = [];
-      let items = [];
-
-      let lastTime = 0;
-      let moveTimer = 0;
-      let lastHasInput = false;
-      const MOVE_INTERVAL = 16;
-      const PLAYER_SPEED = 0.8;
-      let playerMoveAccum = 0;
-
       let score = 0;
       let lives = MAX_LIVES;
       let stage = 1;
       let running = false;
-      let pendingAction = null;
 
-      let speedBuffRemaining = 0;
+      const input = { x: 0, y: 0 };
+      const keys = { w: false, a: false, s: false, d: false, up: false, left: false, down: false, right: false };
 
-      const keys = {
-        left: false,
-        right: false,
-        up: false,
-        down: false
-      };
+      function loadRandomImage() {
+        loadingMsg.style.display = "block";
+        revealImage = new Image();
+        revealImage.crossOrigin = "Anonymous";
+        const seed = Math.floor(Math.random() * 1000) + stage;
+        revealImage.src = `https://picsum.photos/640/640?random=${seed}`;
+        
+        revealImage.onload = () => {
+          loadingMsg.style.display = "none";
+          renderStaticBoard();
+        };
+        revealImage.onerror = () => { loadingMsg.style.display = "none"; };
+      }
 
-      function setDirFlag(dir, pressed) {
-        if (dir === "left") keys.left = pressed;
-        else if (dir === "right") keys.right = pressed;
-        else if (dir === "up") keys.up = pressed;
-        else if (dir === "down") keys.down = pressed;
+      function renderStaticBoard() {
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        bgCtx.fillStyle = "#000000";
+        bgCtx.beginPath();
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            if (board[y][x] === 1) {
+              bgCtx.rect(x * cellSize, y * cellSize, cellSize, cellSize);
+            }
+          }
+        }
+        bgCtx.fill();
+
+        bgCtx.globalCompositeOperation = 'source-in';
+        if (revealImage.complete && revealImage.naturalWidth > 0) {
+           bgCtx.drawImage(revealImage, 0, 0, bgCanvas.width, bgCanvas.height);
+        } else {
+           bgCtx.fillStyle = "#10b981";
+           bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+        }
+        bgCtx.globalCompositeOperation = 'source-over';
+
+        bgCtx.strokeStyle = "rgba(255,255,255,0.05)";
+        bgCtx.lineWidth = 0.5;
+        bgCtx.beginPath();
+        for(let x=0; x<=cols; x+=5) {
+           bgCtx.moveTo(x*cellSize, 0); bgCtx.lineTo(x*cellSize, bgCanvas.height);
+        }
+        for(let y=0; y<=rows; y+=5) {
+           bgCtx.moveTo(0, y*cellSize); bgCtx.lineTo(bgCanvas.width, y*cellSize);
+        }
+        bgCtx.stroke();
+      }
+
+      function updateInputVector() {
+        let kx = 0, ky = 0;
+        if (keys.a || keys.left) kx -= 1;
+        if (keys.d || keys.right) kx += 1;
+        if (keys.w || keys.up) ky -= 1;
+        if (keys.s || keys.down) ky += 1;
+
+        if (kx !== 0 || ky !== 0) {
+          const len = Math.hypot(kx, ky);
+          input.x = kx / len;
+          input.y = ky / len;
+        } 
+      }
+
+      function bindInputEvents() {
+        window.addEventListener("keydown", e => {
+          const k = e.key.toLowerCase();
+          if(k === 'w' || k === 'arrowup') keys.w = true;
+          if(k === 'a' || k === 'arrowleft') keys.a = true;
+          if(k === 's' || k === 'arrowdown') keys.s = true;
+          if(k === 'd' || k === 'arrowright') keys.d = true;
+          updateInputVector();
+        });
+        window.addEventListener("keyup", e => {
+          const k = e.key.toLowerCase();
+          if(k === 'w' || k === 'arrowup') keys.w = false;
+          if(k === 'a' || k === 'arrowleft') keys.a = false;
+          if(k === 's' || k === 'arrowdown') keys.s = false;
+          if(k === 'd' || k === 'arrowright') keys.d = false;
+          
+          if (!keys.w && !keys.a && !keys.s && !keys.d) {
+             const stickActive = document.querySelector(".stick-base").getAttribute("data-active") === "true";
+             if(!stickActive) { input.x = 0; input.y = 0; }
+          } else {
+             updateInputVector();
+          }
+        });
       }
 
       function bindJoystick() {
-        if (!joystickArea || !joystickHandle) return;
+        const base = document.querySelector(".stick-base");
+        const handle = document.getElementById("stickHandle");
+        let rect = base.getBoundingClientRect();
+        let dragging = false;
 
-        const base = joystickArea.querySelector(".stick-base");
-        if (!base) return;
+        const updateStick = (clientX, clientY) => {
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dx = clientX - cx;
+          const dy = clientY - cy;
+          const dist = Math.hypot(dx, dy);
+          const maxDist = rect.width / 2;
 
-        let active = false;
-        function resetStick() {
-          joystickHandle.style.left = "50%";
-          joystickHandle.style.top = "50%";
-          keys.up = keys.down = keys.left = keys.right = false;
-        }
-
-        function getRect() {
-          return base.getBoundingClientRect();
-        }
-
-        function updateFromPoint(clientX, clientY) {
-          const rect = getRect();
-          const centerX = rect.left + rect.width / 2;
-          const centerY = rect.top + rect.height / 2;
-
-          let dx = clientX - centerX;
-          let dy = clientY - centerY;
-
-          const maxR = rect.width / 2;
-          const len = Math.hypot(dx, dy);
-
-          if (len < maxR * 0.2) {
-            resetStick();
-            return;
+          if (dist < 10) {
+             input.x = 0; input.y = 0;
+             handle.style.transform = `translate(-50%, -50%)`;
+             return;
           }
 
-          const clampedLen = Math.min(len, maxR * 0.9);
-          const nx = dx / (len || 1);
-          const ny = dy / (len || 1);
-          const px = centerX + nx * clampedLen;
-          const py = centerY + ny * clampedLen;
+          const angle = Math.atan2(dy, dx);
+          input.x = Math.cos(angle);
+          input.y = Math.sin(angle);
 
-          joystickHandle.style.left = ((px - rect.left) / rect.width * 100) + "%";
-          joystickHandle.style.top = ((py - rect.top) / rect.height * 100) + "%";
+          const visualDist = Math.min(dist, maxDist);
+          const vx = Math.cos(angle) * visualDist;
+          const vy = Math.sin(angle) * visualDist;
+          handle.style.transform = `translate(calc(-50% + ${vx}px), calc(-50% + ${vy}px))`;
+        };
 
-          let angle = Math.atan2(ny, nx);
-          let deg = angle * 180 / Math.PI;
-          if (deg < 0) deg += 360;
-
-          keys.up = keys.down = keys.left = keys.right = false;
-
-          if (deg >= 337.5 || deg < 22.5) {
-            keys.right = true;
-          } else if (deg >= 22.5 && deg < 67.5) {
-            keys.right = true;
-            keys.down = true;
-          } else if (deg >= 67.5 && deg < 112.5) {
-            keys.down = true;
-          } else if (deg >= 112.5 && deg < 157.5) {
-            keys.down = true;
-            keys.left = true;
-          } else if (deg >= 157.5 && deg < 202.5) {
-            keys.left = true;
-          } else if (deg >= 202.5 && deg < 247.5) {
-            keys.left = true;
-            keys.up = true;
-          } else if (deg >= 247.5 && deg < 292.5) {
-            keys.up = true;
-          } else if (deg >= 292.5 && deg < 337.5) {
-            keys.up = true;
-            keys.right = true;
-          }
-        }
-
-        function getPoint(e) {
-          if (e.touches && e.touches.length > 0) {
-            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-          }
-          return { x: e.clientX, y: e.clientY };
-        }
-
-        base.addEventListener("mousedown", (e) => {
+        const start = (e) => {
+          dragging = true;
+          base.setAttribute("data-active", "true");
+          rect = base.getBoundingClientRect();
+          const p = e.touches ? e.touches[0] : e;
+          updateStick(p.clientX, p.clientY);
+        };
+        const move = (e) => {
+          if (!dragging) return;
           e.preventDefault();
-          active = true;
-          const p = getPoint(e);
-          updateFromPoint(p.x, p.y);
-        });
+          const p = e.touches ? e.touches[0] : e;
+          updateStick(p.clientX, p.clientY);
+        };
+        const end = () => {
+          dragging = false;
+          base.setAttribute("data-active", "false");
+          input.x = 0; input.y = 0;
+          handle.style.transform = `translate(-50%, -50%)`;
+          updateInputVector();
+        };
 
-        base.addEventListener("touchstart", (e) => {
-          e.preventDefault();
-          active = true;
-          const p = getPoint(e);
-          updateFromPoint(p.x, p.y);
-        }, { passive: false });
-
-        window.addEventListener("mousemove", (e) => {
-          if (!active) return;
-          e.preventDefault();
-          const p = getPoint(e);
-          updateFromPoint(p.x, p.y);
-        });
-
-        window.addEventListener("touchmove", (e) => {
-          if (!active) return;
-          e.preventDefault();
-          const p = getPoint(e);
-          updateFromPoint(p.x, p.y);
-        }, { passive: false });
-
-        function endInteraction(e) {
-          if (!active) return;
-          e.preventDefault();
-          active = false;
-          resetStick();
-        }
-
-        window.addEventListener("mouseup", endInteraction);
-        window.addEventListener("touchend", endInteraction, { passive: false });
-        window.addEventListener("touchcancel", endInteraction, { passive: false });
-
-        resetStick();
-      }
-
-      function getInputDir() {
-        let dx = 0;
-        let dy = 0;
-        if (keys.left && !keys.right) dx = -1;
-        else if (keys.right && !keys.left) dx = 1;
-        if (keys.up && !keys.down) dy = -1;
-        else if (keys.down && !keys.up) dy = 1;
-        return { x: dx, y: dy };
+        base.addEventListener("mousedown", start);
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", end);
+        base.addEventListener("touchstart", start, {passive:false});
+        window.addEventListener("touchmove", move, {passive:false});
+        window.addEventListener("touchend", end);
       }
 
       function createEmptyBoard() {
@@ -525,878 +457,506 @@
         for (let y = 0; y < rows; y++) {
           const row = [];
           for (let x = 0; x < cols; x++) {
-            if (y === 0 || y === rows - 1 || x === 0 || x === cols - 1) {
-              row.push(1);
-            } else {
-              row.push(0);
-            }
+            if (y === 0 || y === rows - 1 || x === 0 || x === cols - 1) row.push(1);
+            else row.push(0);
           }
           b.push(row);
         }
         return b;
       }
 
-      function resetPlayer() {
-        player = {
-          x: 1,
-          y: 0,
-          drawing: false,
-          trail: []
-        };
-        playerMoveAccum = 0;
-        keys.left = keys.right = keys.up = keys.down = false;
-      }
-
-      function randomSpeedBetween() {
-        return MIN_SPEED + Math.random() * (MAX_SPEED - MIN_SPEED);
-      }
-
-      function spawnEnemiesForStage(stageNum) {
-        enemies = [];
-        const baseR1 = cellSize * 2.2;
-        const baseR2 = baseR1 * 2.5;
-
-        function spawnType1(count) {
-          for (let i = 0; i < count; i++) {
-            const ex = 2 + Math.floor(Math.random() * (cols - 4));
-            const ey = 2 + Math.floor(Math.random() * (rows - 4));
-            const speed = randomSpeedBetween();
-            const angle = Math.random() * Math.PI * 2;
-            enemies.push({
-              type: 1,
-              radius: baseR1,
-              x: ex * cellSize + cellSize / 2,
-              y: ey * cellSize + cellSize / 2,
-              vx: Math.cos(angle) * speed,
-              vy: Math.sin(angle) * speed
-            });
-          }
-        }
-
-        function spawnType2(count) {
-          for (let i = 0; i < count; i++) {
-            const ex = 2 + Math.floor(Math.random() * (cols - 4));
-            const ey = 2 + Math.floor(Math.random() * (rows - 4));
-            const angle = Math.random() * Math.PI * 2;
-            enemies.push({
-              type: 2,
-              radius: baseR2,
-              x: ex * cellSize + cellSize / 2,
-              y: ey * cellSize + cellSize / 2,
-              vx: Math.cos(angle) * SPEED_TYPE2,
-              vy: Math.sin(angle) * SPEED_TYPE2
-            });
-          }
-        }
-
-        if (stageNum === 1) {
-          spawnType1(2);
-        } else if (stageNum === 2) {
-          spawnType1(3);
-          spawnType2(1);
-        } else if (stageNum === 3) {
-          spawnType1(4);
-          spawnType2(2);
-        }
-      }
-
-      function shuffleArray(arr) {
-        for (let i = arr.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          const tmp = arr[i];
-          arr[i] = arr[j];
-          arr[j] = tmp;
-        }
-      }
-
-      function spawnItemsForStage() {
-        items = [];
-        const types = ["speed", "life", "enemy"];
-        shuffleArray(types);
-        const chosen = types.slice(0, 2);
-
-        for (const t of chosen) {
-          let placed = false;
-          for (let tries = 0; tries < 100 && !placed; tries++) {
-            const rx = 2 + Math.floor(Math.random() * (cols - 4));
-            const ry = 2 + Math.floor(Math.random() * (rows - 4));
-            if (board[ry][rx] !== 0) continue;
-            if (items.some(it => it.x === rx && it.y === ry)) continue;
-            items.push({ x: rx, y: ry, type: t });
-            placed = true;
-          }
-        }
-      }
-
-      function setupStage(stageNum, resetScoreAndLives) {
-        if (resetScoreAndLives) {
+      function setupStage(s, hardReset) {
+        if(hardReset) {
           score = 0;
           lives = MAX_LIVES;
-          speedBuffRemaining = 0;
         }
         board = createEmptyBoard();
-        resetPlayer();
-        spawnEnemiesForStage(stageNum);
-        spawnItemsForStage();
-        updateHUD(getFillPercent());
+        player.x = cols / 2;
+        player.y = 0; 
+        player.trail = [];
+        player.drawing = false;
+
+        spawnEnemies(s);
+        loadRandomImage();
+        updateHUD(0);
       }
 
-      function startNewGame() {
-        stage = 1;
-        stageEl.textContent = stage;
-        overlay.style.display = "none";
-        restartBtn.style.display = "none";
-        startLayer.style.display = "flex";
-        running = false;
-        pendingAction = null;
-        setupStage(stage, true);
+      function spawnEnemies(s) {
+        enemies = [];
+        
+        let basicCount = 0;
+        let giantCount = 0;
+
+        if (s === 1) {
+            basicCount = 1; giantCount = 0;
+        } else if (s === 2) {
+            basicCount = 2; giantCount = 1;
+        } else if (s === 3) {
+            basicCount = 5; giantCount = 2;
+        } else {
+            basicCount = 5 + (s-3);
+            giantCount = 2 + Math.floor((s-3)/2);
+        }
+
+        function createEnemy(type) {
+            const angle = Math.random() * Math.PI * 2;
+            const isGiant = (type === 'giant');
+            const baseSpd = isGiant ? GIANT_SPEED : BASIC_SPEED;
+            const radius = isGiant ? GIANT_RADIUS : BASIC_RADIUS;
+
+            // [FIX] 랜덤 위치 소환 (중앙 부근 50% 영역 내)
+            // 화면 중앙 320, 320을 기준으로 +- 150 범위 내에서 랜덤
+            const range = 300; 
+            const randX = (canvas.width/2) + (Math.random() - 0.5) * range;
+            const randY = (canvas.height/2) + (Math.random() - 0.5) * range;
+
+            return {
+                type: type, 
+                x: randX,
+                y: randY,
+                vx: Math.cos(angle) * baseSpd,
+                vy: Math.sin(angle) * baseSpd,
+                baseSpeed: baseSpd,
+                radius: radius,
+                rotation: 0,
+                rotationDir: 1, 
+            };
+        }
+
+        for(let i=0; i<giantCount; i++) enemies.push(createEnemy('giant'));
+        for(let i=0; i<basicCount; i++) enemies.push(createEnemy('basic'));
       }
 
-      function updateHUD(fillPercent) {
-        stageEl.textContent = stage;
-        scoreEl.textContent = score;
-        fillEl.textContent = fillPercent.toFixed(0);
-        livesEl.textContent = lives;
+      function markPath(x0, y0, x1, y1) {
+         let gridX0 = Math.floor(x0 + 0.5);
+         let gridY0 = Math.floor(y0 + 0.5);
+         let gridX1 = Math.floor(x1 + 0.5);
+         let gridY1 = Math.floor(y1 + 0.5);
+
+         const dx = Math.abs(gridX1 - gridX0);
+         const dy = Math.abs(gridY1 - gridY0);
+         const sx = (gridX0 < gridX1) ? 1 : -1;
+         const sy = (gridY0 < gridY1) ? 1 : -1;
+         let err = dx - dy;
+
+         let loopCount = 0; 
+         while(loopCount < 200) {
+            loopCount++;
+            
+            if(gridX0 >= 0 && gridX0 < cols && gridY0 >= 0 && gridY0 < rows) {
+               if(board[gridY0][gridX0] === 0) {
+                  board[gridY0][gridX0] = 2;
+                  player.trail.push({x: gridX0, y: gridY0});
+               }
+            }
+
+            if (gridX0 === gridX1 && gridY0 === gridY1) break;
+            const e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; gridX0 += sx; }
+            if (e2 < dx) { err += dx; gridY0 += sy; }
+         }
       }
 
-      function beginPlayIfReady() {
-        if (!running) {
-          running = true;
-          startLayer.style.display = "none";
+      function updatePlayer() {
+        if (input.x === 0 && input.y === 0) return;
+
+        const speed = BASIC_SPEED; 
+        const nextX = player.x + input.x * speed * 0.1;
+        const nextY = player.y + input.y * speed * 0.1;
+
+        const nx = Math.floor(nextX + 0.5); 
+        const ny = Math.floor(nextY + 0.5);
+        if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) return;
+
+        const currGridX = Math.floor(player.x + 0.5);
+        const currGridY = Math.floor(player.y + 0.5);
+        const nextGridX = nx;
+        const nextGridY = ny;
+
+        let cellState = 0;
+        if(currGridX>=0 && currGridX<cols && currGridY>=0 && currGridY<rows) {
+           cellState = board[currGridY][currGridX];
+        }
+
+        if (!player.drawing) {
+           if (cellState === 1 && board[nextGridY][nextGridX] === 1) {
+             player.x = nextX;
+             player.y = nextY;
+           } 
+           else if (board[nextGridY][nextGridX] === 0) {
+             player.drawing = true;
+             player.trail = []; 
+             markPath(player.x, player.y, nextX, nextY);
+             player.x = nextX;
+             player.y = nextY;
+           }
+           else {
+             player.x = nextX;
+             player.y = nextY;
+           }
+        } else {
+           markPath(player.x, player.y, nextX, nextY);
+           player.x = nextX;
+           player.y = nextY;
+
+           if (board[nextGridY][nextGridX] === 1) {
+             completeFill();
+           }
+           else if (board[nextGridY][nextGridX] === 2) {
+             const trailIdx = player.trail.findIndex(t => t.x === nextGridX && t.y === nextGridY);
+             if (trailIdx !== -1 && trailIdx < player.trail.length - 5) {
+                loseLife();
+             }
+           }
         }
       }
 
-      document.addEventListener("keydown", function (e) {
-        if (e.key === " " && !running && startLayer.style.display !== "none") {
-          e.preventDefault();
-          beginPlayIfReady();
-          return;
-        }
-        if (e.key === "ArrowLeft" || e.key === "a") {
-          e.preventDefault();
-          setDirFlag("left", true);
-        }
-        if (e.key === "ArrowRight" || e.key === "d") {
-          e.preventDefault();
-          setDirFlag("right", true);
-        }
-        if (e.key === "ArrowUp" || e.key === "w") {
-          e.preventDefault();
-          setDirFlag("up", true);
-        }
-        if (e.key === "ArrowDown" || e.key === "s") {
-          e.preventDefault();
-          setDirFlag("down", true);
-        }
-      });
+      function checkCircleGridCollision(e) {
+        const startX = Math.floor((e.x - e.radius) / cellSize);
+        const endX = Math.floor((e.x + e.radius) / cellSize);
+        const startY = Math.floor((e.y - e.radius) / cellSize);
+        const endY = Math.floor((e.y + e.radius) / cellSize);
 
-      document.addEventListener("keyup", function (e) {
-        if (e.key === "ArrowLeft" || e.key === "a") {
-          e.preventDefault();
-          setDirFlag("left", false);
-        }
-        if (e.key === "ArrowRight" || e.key === "d") {
-          e.preventDefault();
-          setDirFlag("right", false);
-        }
-        if (e.key === "ArrowUp" || e.key === "w") {
-          e.preventDefault();
-          setDirFlag("up", false);
-        }
-        if (e.key === "ArrowDown" || e.key === "s") {
-          e.preventDefault();
-          setDirFlag("down", false);
-        }
-      });
+        // 범위 밖 방어 코드
+        if (startX >= cols || endX < 0 || startY >= rows || endY < 0) return true;
 
-      startButton.addEventListener("click", function () {
-        beginPlayIfReady();
-      });
+        for (let y = startY; y <= endY; y++) {
+          for (let x = startX; x <= endX; x++) {
+            let isWall = false;
+            if (x < 0 || x >= cols || y < 0 || y >= rows) isWall = true;
+            else if (board[y][x] === 1) isWall = true;
 
-      restartBtn.addEventListener("click", function () {
-        startNewGame();
-      });
+            if (isWall) {
+              const cellX = x * cellSize;
+              const cellY = y * cellSize;
+              
+              const closestX = Math.max(cellX, Math.min(e.x, cellX + cellSize));
+              const closestY = Math.max(cellY, Math.min(e.y, cellY + cellSize));
+              
+              const dx = e.x - closestX;
+              const dy = e.y - closestY;
+              const distSq = dx * dx + dy * dy;
 
-      overlayRestart.addEventListener("click", function () {
-        overlay.style.display = "none";
-        if (pendingAction === "stage2") {
-          stage = 2;
-          setupStage(stage, false);
-          running = true;
-        } else if (pendingAction === "stage3") {
-          stage = 3;
-          setupStage(stage, false);
-          running = true;
-        } else if (pendingAction === "restart") {
-          startNewGame();
-        }
-        pendingAction = null;
-      });
-
-      localRankButton.addEventListener("click", function () {
-        showLocalRank();
-      });
-
-      function blockedPixel(px, py, radius) {
-        const steps = 18;
-        for (let i = 0; i < steps; i++) {
-          const ang = (Math.PI * 2 * i) / steps;
-          const sx = px + Math.cos(ang) * radius;
-          const sy = py + Math.sin(ang) * radius;
-          const cx = Math.floor(sx / cellSize);
-          const cy = Math.floor(sy / cellSize);
-          if (cx < 0 || cx >= cols || cy < 0 || cy >= rows) return true;
-          const v = board[cy][cx];
-          if (v === 1) return true;
+              if (distSq < e.radius * e.radius) {
+                if (e.type === 'giant' && x>=0 && x<cols && y>=0 && y<rows && board[y][x] === 1) {
+                   board[y][x] = 0;
+                   renderStaticBoard(); 
+                }
+                return true;
+              }
+            }
+          }
         }
         return false;
       }
 
-      function randomBounceTowardPlayer(enemy) {
-        const px = (player.x + 0.5) * cellSize;
-        const py = (player.y + 0.5) * cellSize;
-        let dx = px - enemy.x;
-        let dy = py - enemy.y;
-        let len = Math.hypot(dx, dy);
-        if (!len) {
-          dx = 1;
-          dy = 0;
-          len = 1;
-        }
-        dx /= len;
-        dy /= len;
-        const baseAngle = Math.atan2(dy, dx);
-        const maxAngle = Math.PI / 3;
-        const offset = (Math.random() * 2 - 1) * maxAngle;
-        const angle = baseAngle + offset;
+      function updateEnemies() {
+        for(let i=0; i<enemies.length; i++) {
+            for(let j=i+1; j<enemies.length; j++) {
+                const e1 = enemies[i];
+                const e2 = enemies[j];
+                const dx = e2.x - e1.x;
+                const dy = e2.y - e1.y;
+                let dist = Math.hypot(dx, dy);
+                
+                // [FIX] 0 나누기 방지
+                if (dist < 0.001) dist = 0.001; 
 
-        let speed;
-        if (enemy.type === 2) {
-          speed = SPEED_TYPE2;
-        } else {
-          speed = randomSpeedBetween();
+                const minDist = e1.radius + e2.radius;
+
+                if (dist < minDist) {
+                    const overlap = minDist - dist;
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+                    
+                    e1.x -= nx * overlap * 0.5;
+                    e1.y -= ny * overlap * 0.5;
+                    e2.x += nx * overlap * 0.5;
+                    e2.y += ny * overlap * 0.5;
+
+                    const v1n = e1.vx * nx + e1.vy * ny;
+                    const v2n = e2.vx * nx + e2.vy * ny;
+
+                    e1.vx += (v2n - v1n) * nx;
+                    e1.vy += (v2n - v1n) * ny;
+                    e2.vx += (v1n - v2n) * nx;
+                    e2.vy += (v1n - v2n) * ny;
+                    
+                    applyRandomSpeed(e1);
+                    applyRandomSpeed(e2);
+                }
+            }
         }
-        return {
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed
-        };
+
+        enemies.forEach(e => {
+          if(e.type === 'giant') {
+              e.rotation += 0.02 * e.rotationDir;
+          }
+
+          e.x += e.vx;
+          if (checkCircleGridCollision(e)) {
+             e.x -= e.vx; 
+             e.vx = -e.vx; 
+             applyRandomSpeed(e);
+             if(e.type === 'giant') e.rotationDir *= -1; 
+          }
+
+          e.y += e.vy;
+          if (checkCircleGridCollision(e)) {
+             e.y -= e.vy; 
+             e.vy = -e.vy; 
+             applyRandomSpeed(e);
+             if(e.type === 'giant') e.rotationDir *= -1; 
+          }
+        });
       }
 
-      function update(dt) {
-        if (!running) {
-          return;
-        }
-
-        if (speedBuffRemaining > 0) {
-          speedBuffRemaining = Math.max(0, speedBuffRemaining - dt);
-        }
-        const speedFactor = speedBuffRemaining > 0 ? SPEED_BUFF_FACTOR : 1.0;
-
-        const dirNow = getInputDir();
-        const hasInput = dirNow.x !== 0 || dirNow.y !== 0;
-
-        if (hasInput && !lastHasInput) {
-          moveTimer += MOVE_INTERVAL;
-        }
-        lastHasInput = hasInput;
-
-        moveTimer += dt * speedFactor;
-        const steps = Math.floor(moveTimer / MOVE_INTERVAL);
-        if (steps <= 0) return;
-        moveTimer -= steps * MOVE_INTERVAL;
-
-        for (let i = 0; i < steps; i++) {
-          stepPlayer();
-          stepEnemies();
-          checkCollisions();
-        }
-      }
-
-      function stepPlayer() {
-        const dir = getInputDir();
-        const dx = dir.x;
-        const dy = dir.y;
-        if (dx === 0 && dy === 0) return;
-
-        playerMoveAccum += PLAYER_SPEED;
-        if (playerMoveAccum < 1) return;
-        playerMoveAccum -= 1;
-
-        const nx = player.x + dx;
-        const ny = player.y + dy;
-        if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) return;
-
-        const nextCell = board[ny][nx];
-
-        if (!player.drawing) {
-          if (nextCell === 1) {
-            player.x = nx;
-            player.y = ny;
-          } else if (nextCell === 0) {
-            player.drawing = true;
-            player.x = nx;
-            player.y = ny;
-            player.trail = [{ x: nx, y: ny }];
-            board[ny][nx] = 2;
-          }
-        } else {
-          if (nextCell === 0) {
-            player.x = nx;
-            player.y = ny;
-            player.trail.push({ x: nx, y: ny });
-            board[ny][nx] = 2;
-          } else if (nextCell === 1) {
-            player.x = nx;
-            player.y = ny;
-            completeTrailAndFill();
-          } else if (nextCell === 2) {
-            loseLife();
-          }
-        }
-      }
-
-      function stepEnemies() {
-        for (const enemy of enemies) {
-          let nx = enemy.x + enemy.vx;
-          let ny = enemy.y + enemy.vy;
-
-          if (blockedPixel(nx, ny, enemy.radius)) {
-            let tries = 0;
-            let bounced = false;
-            while (tries < 8) {
-              const nd = randomBounceTowardPlayer(enemy);
-              enemy.vx = nd.vx;
-              enemy.vy = nd.vy;
-              nx = enemy.x + enemy.vx;
-              ny = enemy.y + enemy.vy;
-              if (!blockedPixel(nx, ny, enemy.radius)) {
-                bounced = true;
-                break;
-              }
-              tries++;
-            }
-            if (!bounced) {
-              enemy.vx = -enemy.vx;
-              enemy.vy = -enemy.vy;
-              nx = enemy.x + enemy.vx;
-              ny = enemy.y + enemy.vy;
-            }
-          }
-
-          enemy.x = nx;
-          enemy.y = ny;
-
-          if (enemy.x < cellSize) enemy.x = cellSize;
-          if (enemy.x > canvas.width - cellSize) enemy.x = canvas.width - cellSize;
-          if (enemy.y < cellSize) enemy.y = cellSize;
-          if (enemy.y > canvas.height - cellSize) enemy.y = canvas.height - cellSize;
-
-          if (blockedPixel(enemy.x, enemy.y, enemy.radius)) {
-            for (let t = 0; t < 40; t++) {
-              const ex = 2 + Math.floor(Math.random() * (cols - 4));
-              const ey = 2 + Math.floor(Math.random() * (rows - 4));
-              const rx = ex * cellSize + cellSize / 2;
-              const ry = ey * cellSize + cellSize / 2;
-              if (!blockedPixel(rx, ry, enemy.radius)) {
-                enemy.x = rx;
-                enemy.y = ry;
-                break;
-              }
-            }
-          }
-        }
-
-        for (let i = 0; i < enemies.length; i++) {
-          for (let j = i + 1; j < enemies.length; j++) {
-            const a = enemies[i];
-            const b = enemies[j];
-            const dx = b.x - a.x;
-            const dy = b.y - a.y;
-            const dist = Math.hypot(dx, dy);
-            const minDist = (a.radius + b.radius) * 0.9;
-            if (dist > 0 && dist < minDist) {
-              const tvx = a.vx;
-              const tvy = a.vy;
-              a.vx = b.vx;
-              a.vy = b.vy;
-              b.vx = tvx;
-              b.vy = tvy;
-
-              const overlap = (minDist - dist) / 2;
-              const nxn = dx / dist;
-              const nyn = dy / dist;
-              a.x -= nxn * overlap;
-              a.y -= nyn * overlap;
-              b.x += nxn * overlap;
-              b.y += nyn * overlap;
-            }
-          }
-        }
+      function applyRandomSpeed(e) {
+         const angle = Math.atan2(e.vy, e.vx);
+         const newSpeed = e.baseSpeed * (0.8 + Math.random() * 0.4);
+         e.vx = Math.cos(angle) * newSpeed;
+         e.vy = Math.sin(angle) * newSpeed;
       }
 
       function checkCollisions() {
-        const playerRadius = cellSize * 0.9;
-        const pcx = (player.x + 0.5) * cellSize;
-        const pcy = (player.y + 0.5) * cellSize;
+        if (!player.drawing) return;
 
-        for (const enemy of enemies) {
-          const dx = enemy.x - pcx;
-          const dy = enemy.y - pcy;
-          const dist = Math.hypot(dx, dy);
-          if (dist < enemy.radius + playerRadius * 0.8) {
+        const px = player.x * cellSize;
+        const py = player.y * cellSize;
+
+        for (const e of enemies) {
+          const dist = Math.hypot(e.x - px, e.y - py);
+          if (dist < e.radius + cellSize) { 
             loseLife();
             return;
           }
-
-          const steps = 24;
-          for (let i = 0; i < steps; i++) {
-            const ang = (Math.PI * 2 * i) / steps;
-            const sx = enemy.x + Math.cos(ang) * enemy.radius;
-            const sy = enemy.y + Math.sin(ang) * enemy.radius;
-            const cx = Math.floor(sx / cellSize);
-            const cy = Math.floor(sy / cellSize);
-            if (cx < 0 || cx >= cols || cy < 0 || cy >= rows) continue;
-            if (board[cy][cx] === 2) {
-              loseLife();
-              return;
-            }
+          for (const t of player.trail) {
+             const tx = t.x * cellSize + cellSize/2;
+             const ty = t.y * cellSize + cellSize/2;
+             if (Math.hypot(e.x - tx, e.y - ty) < e.radius + cellSize/2) {
+                loseLife();
+                return;
+             }
           }
         }
       }
 
-      function clearTrail() {
-        for (let y = 0; y < rows; y++) {
-          for (let x = 0; x < cols; x++) {
-            if (board[y][x] === 2) board[y][x] = 0;
-          }
-        }
-      }
-
-      function getNickname() {
-        if (!nicknameInput) return "플레이어";
-        const name = nicknameInput.value.trim();
-        if (!name) return "플레이어";
-        return name;
-      }
-
-      function saveScoreIfNeeded() {
-        if (score <= 0) return;
-        if (!window.localStorage) return;
-        let arr;
-        try {
-          arr = JSON.parse(localStorage.getItem("qixGiftLocalScores") || "[]");
-        } catch (e) {
-          arr = [];
-        }
-        const name = getNickname();
-        arr.push({
-          name: name,
-          score: score,
-          stage: stage,
-          time: new Date().toISOString()
-        });
-        arr.sort((a, b) => b.score - a.score);
-        if (arr.length > 30) arr = arr.slice(0, 30);
-        localStorage.setItem("qixGiftLocalScores", JSON.stringify(arr));
-      }
-
-      function showLocalRank() {
-        if (!window.localStorage) {
-          alert("이 브라우저에서는 로컬 등수를 저장할 수 없어.");
-          return;
-        }
-        let arr;
-        try {
-          arr = JSON.parse(localStorage.getItem("qixGiftLocalScores") || "[]");
-        } catch (e) {
-          arr = [];
-        }
-        if (!arr.length) {
-          alert("아직 저장된 기록이 없어.");
-          return;
-        }
-        const lines = arr.slice(0, 10).map((entry, idx) => {
-          const dateStr = entry.time ? entry.time.slice(0, 10) : "";
-          return (
-            (idx + 1) +
-            "위 - " +
-            (entry.name || "플레이어") +
-            " : " +
-            entry.score +
-            "점 (최종 스테이지 " +
-            entry.stage +
-            ", " +
-            dateStr +
-            ")"
-          );
-        });
-        alert(lines.join("\n"));
-      }
-
-      function loseLife() {
-        clearTrail();
-        player.drawing = false;
-        player.trail = [];
-        lives -= 1;
-        if (lives <= 0) {
-          lives = 0;
-          running = false;
-          updateHUD(getFillPercent());
-          saveScoreIfNeeded();
-          restartBtn.style.display = "inline-block";
-          showOverlay("게임 오버", "적이나 선에 닿았어… 다시 한 판?", "restart");
-        } else {
-          resetPlayer();
-          spawnEnemiesForStage(stage);
-          updateHUD(getFillPercent());
-        }
-      }
-
-      function applyItem(type) {
-        if (type === "speed") {
-          speedBuffRemaining = BUFF_DURATION;
-        } else if (type === "life") {
-          lives += 1;
-          updateHUD(getFillPercent());
-        } else if (type === "enemy") {
-          const baseR1 = cellSize * 2.2;
-          let placed = false;
-          for (let tries = 0; tries < 100 && !placed; tries++) {
-            const ex = 2 + Math.floor(Math.random() * (cols - 4));
-            const ey = 2 + Math.floor(Math.random() * (rows - 4));
-            if (board[ey][ex] === 1) continue;
-            const speed = randomSpeedBetween();
-            const angle = Math.random() * Math.PI * 2;
-            enemies.push({
-              type: 1,
-              radius: baseR1,
-              x: ex * cellSize + cellSize / 2,
-              y: ey * cellSize + cellSize / 2,
-              vx: Math.cos(angle) * speed,
-              vy: Math.sin(angle) * speed
-            });
-            placed = true;
-          }
-        }
-      }
-
-      function completeTrailAndFill() {
-        for (let y = 0; y < rows; y++) {
-          for (let x = 0; x < cols; x++) {
-            if (board[y][x] === 2) board[y][x] = 1;
-          }
-        }
+      function completeFill() {
+        player.trail.forEach(p => board[p.y][p.x] = 1);
         player.drawing = false;
         player.trail = [];
 
-        const compIndex = [];
-        for (let y = 0; y < rows; y++) {
-          compIndex.push(new Array(cols).fill(-1));
-        }
-        const compSizes = [];
-        let compCount = 0;
+        const regions = []; 
+        const visited = Array(rows).fill(0).map(()=>Array(cols).fill(false));
 
-        const dirs = [
-          { x: 1, y: 0 },
-          { x: -1, y: 0 },
-          { x: 0, y: 1 },
-          { x: 0, y: -1 }
-        ];
+        for(let y=0; y<rows; y++){
+          for(let x=0; x<cols; x++){
+             if(board[y][x] === 0 && !visited[y][x]) {
+                const points = [];
+                let q = [{x,y}];
+                visited[y][x] = true;
+                points.push({x,y});
 
-        for (let y = 0; y < rows; y++) {
-          for (let x = 0; x < cols; x++) {
-            if (board[y][x] !== 0 || compIndex[y][x] !== -1) continue;
-            const q = [{ x, y }];
-            compIndex[y][x] = compCount;
-            let size = 0;
-            while (q.length) {
-              const cur = q.shift();
-              size++;
-              for (const d of dirs) {
-                const nx = cur.x + d.x;
-                const ny = cur.y + d.y;
-                if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
-                if (board[ny][nx] !== 0) continue;
-                if (compIndex[ny][nx] !== -1) continue;
-                compIndex[ny][nx] = compCount;
-                q.push({ x: nx, y: ny });
-              }
-            }
-            compSizes.push(size);
-            compCount++;
+                let head = 0;
+                while(head < q.length){
+                   const curr = q[head++];
+                   [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+                      const nx = curr.x+dx;
+                      const ny = curr.y+dy;
+                      if(nx>=0 && nx<cols && ny>=0 && ny<rows &&
+                         board[ny][nx]===0 && !visited[ny][nx]){
+                         visited[ny][nx] = true;
+                         q.push({x:nx, y:ny});
+                         points.push({x:nx, y:ny});
+                      }
+                   });
+                }
+                regions.push(points);
+             }
           }
         }
 
-        let newlyClaimed = 0;
-
-        if (compCount > 0) {
-          let seaId = 0;
-          let maxSize = compSizes[0];
-          for (let i = 1; i < compCount; i++) {
-            if (compSizes[i] > maxSize) {
-              maxSize = compSizes[i];
-              seaId = i;
+        if (regions.length > 1) {
+            regions.sort((a, b) => b.length - a.length); 
+            for(let i=1; i<regions.length; i++) {
+                const region = regions[i];
+                region.forEach(p => board[p.y][p.x] = 1);
+                score += region.length * 10;
             }
-          }
-
-          const enemyComp = new Array(enemies.length).fill(-1);
-          for (let ei = 0; ei < enemies.length; ei++) {
-            const enemy = enemies[ei];
-            const cx = Math.floor(enemy.x / cellSize);
-            const cy = Math.floor(enemy.y / cellSize);
-            if (cx < 0 || cx >= cols || cy < 0 || cy >= rows) continue;
-            enemyComp[ei] = compIndex[cy][cx];
-          }
-
-          const survivors = [];
-          for (let ei = 0; ei < enemies.length; ei++) {
-            const enemy = enemies[ei];
-            const cx = Math.floor(enemy.x / cellSize);
-            const cy = Math.floor(enemy.y / cellSize);
-            if (cx < 0 || cx >= cols || cy < 0 || cy >= rows) continue;
-            if (board[cy][cx] === 1 && enemyComp[ei] !== seaId && enemyComp[ei] !== -1) {
-              score += 100;
-            } else {
-              survivors.push(enemy);
-            }
-          }
-          enemies = survivors;
-
-          for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-              if (board[y][x] === 0 && compIndex[y][x] !== seaId && compIndex[y][x] !== -1) {
-                board[y][x] = 1;
-                newlyClaimed++;
-              }
-            }
-          }
         }
 
-        if (items.length > 0) {
-          const remainItems = [];
-          for (const it of items) {
-            if (board[it.y][it.x] === 1) {
-              applyItem(it.type);
-            } else {
-              remainItems.push(it);
-            }
-          }
-          items = remainItems;
+        renderStaticBoard();
+
+        const initialCount = enemies.length;
+        enemies = enemies.filter(e => {
+           const gx = Math.floor(e.x / cellSize);
+           const gy = Math.floor(e.y / cellSize);
+           if(gy >= 0 && gy < rows && gx >= 0 && gx < cols) {
+              return board[gy][gx] === 0;
+           }
+           return true; 
+        });
+
+        const killed = initialCount - enemies.length;
+        if(killed > 0) {
+            score += killed * 500;
         }
-
-        if (newlyClaimed > 0) {
-          score += newlyClaimed * 10;
-        }
-
-        const fillPercent = getFillPercent();
-        updateHUD(fillPercent);
-
-        const commonMsg = "이미 사용된 기프티콘입니다 ^^";
-        if (fillPercent >= TARGET_PERCENT) {
+        
+        const percent = getFillPercent();
+        updateHUD(percent);
+        
+        if (percent >= TARGET_PERCENT) {
           running = false;
-          restartBtn.style.display = "inline-block";
-          if (stage === 1) {
-            showOverlay(
-              "스테이지 1 클리어!",
-              commonMsg + "\n(스타벅스 아메리카노 1잔 기프티콘)",
-              "stage2"
-            );
-          } else if (stage === 2) {
-            showOverlay(
-              "스테이지 2 클리어!",
-              commonMsg + "\n(스타벅스 아메리카노 + 디저트 세트 기프티콘)",
-              "stage3"
-            );
-          } else {
-            saveScoreIfNeeded();
-            showOverlay(
-              "스테이지 3 클리어!",
-              "마지막 보상: 제작자가 밥 사줍니다.\n(이건 진짜야, 장난 아님)",
-              "restart"
-            );
-          }
+          showOverlay(`STAGE ${stage} CLEAR!`, "완벽합니다!", () => {
+             stage++;
+             setupStage(stage, false);
+             overlay.style.display = "none";
+             running = true;
+          });
         }
       }
 
       function getFillPercent() {
         let filled = 0;
-        let total = 0;
-        for (let y = 1; y < rows - 1; y++) {
-          for (let x = 1; x < cols - 1; x++) {
-            total++;
-            if (board[y][x] === 1) filled++;
-          }
+        let total = (cols-2)*(rows-2);
+        for(let y=1; y<rows-1; y++) {
+           for(let x=1; x<cols-1; x++) {
+              if(board[y][x] === 1) filled++;
+           }
         }
-        if (total === 0) return 0;
         return (filled / total) * 100;
       }
 
-
-
-      function draw() {
-        ctx.fillStyle = "#020617";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.strokeStyle = "rgba(31,41,55,0.7)";
-        ctx.lineWidth = 0.5;
-
-        for (let y = 0; y <= rows; y++) {
-          const py = y * cellSize + 0.5;
-          ctx.beginPath();
-          ctx.moveTo(0, py);
-          ctx.lineTo(canvas.width, py);
-          ctx.stroke();
+      function loseLife() {
+        lives--;
+        player.trail.forEach(p => board[p.y][p.x] = 0);
+        player.trail = [];
+        player.drawing = false;
+        player.x = cols/2; player.y = 0;
+        
+        updateHUD(getFillPercent());
+        
+        if (lives <= 0) {
+          running = false;
+          showOverlay("GAME OVER", `최종 점수: ${score}`, () => {
+            location.reload();
+          });
         }
-        for (let x = 0; x <= cols; x++) {
-          const px = x * cellSize + 0.5;
-          ctx.beginPath();
-          ctx.moveTo(px, 0);
-          ctx.lineTo(px, canvas.height);
-          ctx.stroke();
-        }
-
-        for (let y = 0; y < rows; y++) {
-          for (let x = 0; x < cols; x++) {
-            const v = board[y][x];
-            if (v === 1) {
-              ctx.fillStyle = "rgba(16,185,129,0.12)";
-            } else if (v === 2) {
-              ctx.fillStyle = "#facc15";
-            } else {
-              continue;
-            }
-            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-          }
-        }
-
-        const rItem = cellSize * 0.7;
-        for (const it of items) {
-          const cx = it.x * cellSize + cellSize / 2;
-          const cy = it.y * cellSize + cellSize / 2;
-          if (it.type === "speed") {
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.beginPath();
-            ctx.moveTo(-rItem * 0.2, -rItem * 0.8);
-            ctx.lineTo(rItem * 0.1, -rItem * 0.1);
-            ctx.lineTo(-rItem * 0.1, -rItem * 0.1);
-            ctx.lineTo(rItem * 0.2, rItem * 0.8);
-            ctx.lineTo(-rItem * 0.1, rItem * 0.2);
-            ctx.lineTo(0, rItem * 0.2);
-            ctx.closePath();
-            ctx.fillStyle = "#facc15";
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "#fef9c3";
-            ctx.stroke();
-            ctx.restore();
-          } else if (it.type === "life") {
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.beginPath();
-            const r = rItem * 0.7;
-            ctx.moveTo(0, r);
-            ctx.bezierCurveTo(-r, r * 0.4, -r, -r * 0.2, 0, -r * 0.4);
-            ctx.bezierCurveTo(r, -r * 0.2, r, r * 0.4, 0, r);
-            ctx.fillStyle = "#22c55e";
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "#bbf7d0";
-            ctx.stroke();
-            ctx.restore();
-          } else if (it.type === "enemy") {
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.beginPath();
-            ctx.moveTo(0, -rItem * 0.8);
-            ctx.lineTo(rItem * 0.8, rItem * 0.8);
-            ctx.lineTo(-rItem * 0.8, rItem * 0.8);
-            ctx.closePath();
-            ctx.fillStyle = "#f97316";
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "#ffedd5";
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(0, -rItem * 0.2);
-            ctx.lineTo(0, rItem * 0.3);
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = "#1f2937";
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(0, rItem * 0.5, rItem * 0.08, 0, Math.PI * 2);
-            ctx.fillStyle = "#1f2937";
-            ctx.fill();
-            ctx.restore();
-          }
-        }
-
-        for (const enemy of enemies) {
-          const r = enemy.radius;
-          if (enemy.type === 2) {
-            const sides = 11;
-            const step = (Math.PI * 2) / sides;
-            const startAngle = -Math.PI / 2;
-            ctx.beginPath();
-            for (let i = 0; i < sides; i++) {
-              const ang = startAngle + step * i;
-              const ex = enemy.x + Math.cos(ang) * r;
-              const ey = enemy.y + Math.sin(ang) * r;
-              if (i === 0) ctx.moveTo(ex, ey);
-              else ctx.lineTo(ex, ey);
-            }
-            ctx.closePath();
-            ctx.fillStyle = "#fb7185";
-            ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = "#fecaca";
-            ctx.stroke();
-          } else {
-            ctx.beginPath();
-            ctx.arc(enemy.x, enemy.y, r, 0, Math.PI * 2);
-            ctx.fillStyle = "#ef4444";
-            ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = "#fee2e2";
-            ctx.stroke();
-          }
-        }
-
-        const px = player.x * cellSize + cellSize / 2;
-        const py = player.y * cellSize + cellSize / 2;
-        const pr = cellSize * 0.35;
-        ctx.beginPath();
-        ctx.arc(px, py, pr, 0, Math.PI * 2);
-        ctx.fillStyle = "#e5e7eb";
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#38bdf8";
-        ctx.stroke();
       }
 
-      function showOverlay(title, sub, action) {
+      function updateHUD(pct) {
+        fillEl.textContent = pct.toFixed(1);
+        scoreEl.textContent = score;
+        livesEl.textContent = lives;
+        stageEl.textContent = stage;
+      }
+
+      function showOverlay(title, sub, callback) {
         overlayTitle.textContent = title;
-        overlaySub.textContent = sub || "";
+        overlaySub.textContent = sub;
         overlay.style.display = "flex";
-        pendingAction = action || null;
+        overlayRestart.onclick = callback;
       }
 
-      function loop(timestamp) {
-        if (!lastTime) lastTime = timestamp;
-        const dt = timestamp - lastTime;
-        lastTime = timestamp;
-
-        update(dt);
+      function loop() {
+        if(running) {
+          updatePlayer();
+          updateEnemies();
+          checkCollisions();
+        }
         draw();
-
         requestAnimationFrame(loop);
       }
 
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.drawImage(bgCanvas, 0, 0);
+
+        const px = player.x * cellSize;
+        const py = player.y * cellSize;
+
+        if (player.drawing) {
+           ctx.strokeStyle = "#fbbf24";
+           ctx.lineWidth = cellSize;
+           ctx.lineCap = "round";
+           ctx.lineJoin = "round";
+           ctx.beginPath();
+           if(player.trail.length > 0) {
+             const start = player.trail[0];
+             ctx.moveTo(start.x*cellSize + cellSize/2, start.y*cellSize + cellSize/2);
+             for(let i=1; i<player.trail.length; i++){
+                const t = player.trail[i];
+                ctx.lineTo(t.x*cellSize + cellSize/2, t.y*cellSize + cellSize/2);
+             }
+             ctx.lineTo(px + cellSize/2, py + cellSize/2);
+           }
+           ctx.stroke();
+        }
+
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.arc(px + cellSize/2, py + cellSize/2, cellSize*0.8, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        for(const e of enemies) {
+           if (e.type === 'giant') {
+              ctx.save();
+              ctx.translate(e.x, e.y);
+              ctx.rotate(e.rotation);
+              ctx.beginPath();
+              const sides = 10;
+              for(let i=0; i<sides; i++) {
+                 const theta = (i * 2 * Math.PI) / sides;
+                 const ex = Math.cos(theta) * e.radius;
+                 const ey = Math.sin(theta) * e.radius;
+                 if(i===0) ctx.moveTo(ex, ey);
+                 else ctx.lineTo(ex, ey);
+              }
+              ctx.closePath();
+              ctx.fillStyle = "#a855f7"; 
+              ctx.fill();
+              ctx.lineWidth = 4;
+              ctx.strokeStyle = "#e9d5ff";
+              ctx.stroke();
+              
+              ctx.rotate(-e.rotation); 
+              ctx.fillStyle = "#fff";
+              ctx.beginPath();
+              ctx.arc(-e.radius/3, -e.radius/3, e.radius/5, 0, Math.PI*2);
+              ctx.arc(e.radius/3, -e.radius/3, e.radius/5, 0, Math.PI*2);
+              ctx.fill();
+              ctx.restore();
+
+           } else {
+              ctx.fillStyle = "#f87171";
+              ctx.beginPath();
+              ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
+              ctx.fill();
+              ctx.fillStyle = "#fff";
+              ctx.beginPath();
+              ctx.arc(e.x - e.radius/3, e.y - e.radius/3, e.radius/4, 0, Math.PI*2);
+              ctx.arc(e.x + e.radius/3, e.y - e.radius/3, e.radius/4, 0, Math.PI*2);
+              ctx.fill();
+           }
+        }
+      }
+
+      bindInputEvents();
       bindJoystick();
-      startNewGame();
-      requestAnimationFrame(loop);
+      
+      startButton.addEventListener("click", () => {
+        startLayer.style.display = "none";
+        setupStage(1, true);
+        running = true;
+        loop();
+      });
+
+      restartBtn.addEventListener("click", () => location.reload());
+
     })();
   </script>
 </body>
