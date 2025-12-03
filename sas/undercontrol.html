@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>통제</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            cursor: crosshair;
+        }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="artCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('artCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let w, h, boundaryRadius;
+        
+        // === 벽 그리기 변수 ===
+        const walls = [];
+        let isDrawing = false;
+        let currentWall = { startX: 0, startY: 0, endX: 0, endY: 0 };
+
+        function resize() {
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
+            boundaryRadius = Math.min(w, h) * 0.4;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let mouse = { x: w / 2, y: h / 2 };
+
+        // === 마우스 이벤트 ===
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            currentWall.startX = currentWall.endX = e.clientX;
+            currentWall.startY = currentWall.endY = e.clientY;
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            if (isDrawing) {
+                currentWall.endX = e.clientX;
+                currentWall.endY = e.clientY;
+            }
+        });
+        canvas.addEventListener('mouseup', () => {
+            if (isDrawing) {
+                walls.push({
+                    x1: currentWall.startX, y1: currentWall.startY,
+                    x2: currentWall.endX, y2: currentWall.endY
+                });
+                isDrawing = false;
+            }
+        });
+
+        // === 수학 함수 ===
+        function getClosestPointInfo(px, py, x1, y1, x2, y2) {
+            let dx = x2 - x1;
+            let dy = y2 - y1;
+            if (dx === 0 && dy === 0) return { x: x1, y: y1, dist: Math.hypot(px-x1, py-y1) };
+
+            let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+            t = Math.max(0, Math.min(1, t));
+
+            let closestX = x1 + t * dx;
+            let closestY = y1 + t * dy;
+            let dist = Math.hypot(px - closestX, py - closestY);
+
+            return { x: closestX, y: closestY, dist: dist };
+        }
+
+        const STATES = { APPROACHING: 0, SNIFFING: 1, RETREATING: 2, INTERACTIVE: 3, DEAD: 4 };
+        let currentState = STATES.APPROACHING;
+        let stateTimer = 0;
+
+        const creature = {
+            x: w / 2, y: h / 2, size: 0.1, targetSize: 25,
+            maxSize: boundaryRadius * 0.3, color: '#aaaaaa',
+            noseOffset: 0, bounceOffset: 0, tailWag: 0,
+            vx: 0, vy: 0, friction: 0.92,
+            
+            stressTime: 0,
+            maxStressTime: 30000, 
+            isDead: false,
+
+            // ** [NEW] 평화 시간 체크용 변수 **
+            peaceTime: 0 
+        };
+
+        function drawCreature() {
+            ctx.save();
+            ctx.translate(creature.x, creature.y + creature.bounceOffset);
+
+            if (currentState === STATES.DEAD) {
+                ctx.rotate(Math.PI / 2); 
+            }
+
+            const s = creature.size;
+
+            // 1. 꼬리
+            ctx.beginPath();
+            ctx.moveTo(s * 0.8, 0);
+            let tailWag = currentState === STATES.DEAD ? 0 : creature.tailWag;
+            let tailCurve = currentState === STATES.DEAD ? 0.2 : 0.8;
+            ctx.quadraticCurveTo(s * 1.5, Math.sin(tailWag) * s * 0.5, s * 2.5, Math.sin(tailWag * 1.2) * s * tailCurve);
+            ctx.lineWidth = s * 0.15; ctx.strokeStyle = '#999999'; ctx.lineCap = 'round'; ctx.stroke();
+
+            // 2. 귀 & 몸통 & 손발
+            let bodyColor = currentState === STATES.DEAD ? '#555555' : creature.color;
+
+            // 귀
+            ctx.fillStyle = bodyColor;
+            ctx.beginPath(); ctx.ellipse(-s * 0.5, -s * 0.6, s * 0.5, s * 0.5, -0.5, 0, Math.PI * 2); ctx.ellipse(s * 0.5, -s * 0.6, s * 0.5, s * 0.5, 0.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#333'; ctx.beginPath(); ctx.ellipse(-s * 0.5, -s * 0.6, s * 0.3, s * 0.3, -0.5, 0, Math.PI * 2); ctx.ellipse(s * 0.5, -s * 0.6, s * 0.3, s * 0.3, 0.5, 0, Math.PI * 2); ctx.fill();
+
+            // 몸통
+            ctx.fillStyle = bodyColor;
+            ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+
+            // 손발
+            ctx.beginPath(); ctx.ellipse(-s*0.6, s*0.3, s*0.2, s*0.15, 0.5, 0, Math.PI * 2); ctx.ellipse(s*0.6, s*0.3, s*0.2, s*0.15, -0.5, 0, Math.PI * 2); ctx.ellipse(-s*0.4, s*0.7, s*0.2, s*0.15, 0.2, 0, Math.PI * 2); ctx.ellipse(s*0.4, s*0.7, s*0.2, s*0.15, -0.2, 0, Math.PI * 2); ctx.fill();
+
+            // 3. 눈 (상태에 따라 다르게 그리기)
+            ctx.lineWidth = s * 0.1; 
+            ctx.lineCap = 'round'; // 선 끝을 둥글게
+
+            if (currentState === STATES.DEAD) {
+                // 죽은 눈 (X)
+                ctx.strokeStyle = '#111';
+                ctx.beginPath(); ctx.moveTo(-s*0.5, -s*0.4); ctx.lineTo(-s*0.1, -s*0.0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-s*0.1, -s*0.4); ctx.lineTo(-s*0.5, -s*0.0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(s*0.1, -s*0.4); ctx.lineTo(s*0.5, -s*0.0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(s*0.5, -s*0.4); ctx.lineTo(s*0.1, -s*0.0); ctx.stroke();
+
+            } else if (creature.peaceTime > 10000 && creature.color !== '#ff5555') {
+                // ** [NEW] 10초 이상 평화로우면 웃는 눈 (^ ^) **
+                ctx.strokeStyle = '#222';
+                ctx.beginPath();
+                // 왼쪽 웃는 눈
+                ctx.arc(-s * 0.3, -s * 0.1, s * 0.15, Math.PI * 1.1, Math.PI * 1.9);
+                ctx.stroke();
+                // 오른쪽 웃는 눈
+                ctx.beginPath();
+                ctx.arc(s * 0.3, -s * 0.1, s * 0.15, Math.PI * 1.1, Math.PI * 1.9);
+                ctx.stroke();
+
+            } else {
+                // 평범한 동그라미 눈
+                ctx.fillStyle = creature.color === '#ff5555' ? '#ff0000' : '#222222';
+                ctx.beginPath(); ctx.arc(-s * 0.3, -s * 0.2, s * 0.15, 0, Math.PI * 2); ctx.arc(s * 0.3, -s * 0.2, s * 0.15, 0, Math.PI * 2); ctx.fill();
+                if (creature.size > 10 && creature.color !== '#ff5555') {
+                    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(-s * 0.35, -s * 0.25, s * 0.05, 0, Math.PI * 2); ctx.arc(s * 0.25, -s * 0.25, s * 0.05, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+
+            // 4. 코
+            ctx.fillStyle = currentState === STATES.DEAD ? '#777' : '#ffaaaa';
+            let noseX = creature.noseOffset; let noseY = s * 0.1;
+            ctx.beginPath(); ctx.arc(noseX, noseY, s * 0.15, 0, Math.PI * 2); ctx.fill();
+
+            // 5. 스트레스 게이지
+            if (currentState === STATES.INTERACTIVE && creature.stressTime > 0) {
+                let stressRatio = creature.stressTime / creature.maxStressTime;
+                ctx.fillStyle = 'black'; ctx.fillRect(-s, -s * 1.5, s * 2, s * 0.2);
+                ctx.fillStyle = `rgb(${255 * stressRatio}, ${255 * (1-stressRatio)}, 0)`;
+                ctx.fillRect(-s, -s * 1.5, s * 2 * stressRatio, s * 0.2);
+            }
+
+            // ** [NEW] 40초 이상 평화로우면 하트 그리기 **
+            if (creature.peaceTime > 40000 && currentState === STATES.INTERACTIVE && creature.color !== '#ff5555') {
+                ctx.fillStyle = '#ff69b4'; // 핫핑크
+                // 하트가 두근거리게 크기 조절 (펄스 효과)
+                let pulse = 1 + Math.sin(Date.now() / 200) * 0.1;
+                
+                ctx.save();
+                ctx.translate(0, -s * 2.2); // 머리 위로 이동
+                ctx.scale(pulse, pulse); // 두근두근
+                
+                // 하트 그리기 경로
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-s/2, -s/2, -s, 0, 0, s);
+                ctx.bezierCurveTo(s, 0, s/2, -s/2, 0, 0);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(34, 34, 34, 0.4)';
+            ctx.fillRect(0,0,w,h);
+
+            // 활동 반경 & 벽
+            ctx.beginPath(); ctx.arc(w/2, h/2, boundaryRadius, 0, Math.PI*2);
+            ctx.strokeStyle = '#ffe10055'; ctx.lineWidth = 3; ctx.stroke();
+
+            ctx.beginPath();
+            for (const wall of walls) { ctx.moveTo(wall.x1, wall.y1); ctx.lineTo(wall.x2, wall.y2); }
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
+
+            if (isDrawing) {
+                ctx.beginPath(); ctx.moveTo(currentWall.startX, currentWall.startY); ctx.lineTo(currentWall.endX, currentWall.endY);
+                ctx.strokeStyle = '#ffffff88'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
+            }
+
+            creature.tailWag = Date.now() / 200;
+
+            switch (currentState) {
+                case STATES.APPROACHING:
+                    creature.size += (creature.maxSize - creature.size) * 0.04;
+                    creature.bounceOffset = Math.sin(Date.now() / 50) * (creature.size * 0.2);
+                    creature.tailWag = Date.now() / 50;
+                    if (creature.size > creature.maxSize * 0.95) { currentState = STATES.SNIFFING; stateTimer = Date.now(); creature.bounceOffset = 0; }
+                    break;
+                case STATES.SNIFFING:
+                    creature.noseOffset = Math.sin(Date.now() / 100) * (creature.size * 0.1);
+                    if (Date.now() - stateTimer > 3000) { currentState = STATES.RETREATING; creature.noseOffset = 0; }
+                    break;
+                case STATES.RETREATING:
+                    creature.size += (creature.targetSize - creature.size) * 0.05;
+                    creature.y += 1.5; creature.tailWag = Math.PI / 2;
+                    if (creature.size < creature.targetSize * 1.1) { creature.size = creature.targetSize; currentState = STATES.INTERACTIVE; creature.x = w/2; creature.y = h/2 + 50; }
+                    break;
+
+                case STATES.INTERACTIVE:
+                    let isScared = false;
+
+                    // 1. 마우스 회피 (이제 isScared = true를 안 함!)
+                    let dx = creature.x - mouse.x;
+                    let dy = creature.y - mouse.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 250) {
+                        let force = (250 - distance) / 250;
+                        creature.vx += dx * force * 0.08; 
+                        creature.vy += dy * force * 0.08;
+                        // ** [CHANGE] 여기서 isScared = true 제거 **
+                        // 마우스는 물리적인 힘만 가하고 스트레스는 주지 않음
+                    }
+
+                    // 2. 벽 회피 및 하드 충돌 (여전히 무서움)
+                    for (const wall of walls) {
+                        const info = getClosestPointInfo(creature.x, creature.y, wall.x1, wall.y1, wall.x2, wall.y2);
+                        if (info.dist < 150) {
+                             let force = (150 - info.dist) / 150;
+                             let dirX = (creature.x - info.x) / info.dist;
+                             let dirY = (creature.y - info.y) / info.dist;
+                             creature.vx += dirX * force * 0.15; 
+                             creature.vy += dirY * force * 0.15;
+                             isScared = true; // 벽은 여전히 무서움
+                        }
+                        if (info.dist < creature.size) {
+                            let overlap = creature.size - info.dist;
+                            let dirX = (creature.x - info.x) / info.dist;
+                            let dirY = (creature.y - info.y) / info.dist;
+                            creature.x += dirX * overlap; creature.y += dirY * overlap;
+                            creature.vx *= 0.8; creature.vy *= 0.8;
+                        }
+                    }
+
+                    // 3. 상태 업데이트 (스트레스 vs 평화)
+                    if (isScared) {
+                        creature.color = '#ff5555'; 
+                        creature.tailWag = Date.now() / 30;
+                        creature.stressTime += 16; 
+                        
+                        // ** 놀랐으므로 평화 시간 초기화 **
+                        creature.peaceTime = 0; 
+
+                    } else {
+                        creature.color = '#aaaaaa';
+                        if (creature.stressTime > 0) creature.stressTime -= 30;
+                        
+                        // ** 안 놀랐으면 평화 시간 누적 **
+                        creature.peaceTime += 16;
+                    }
+
+                    if (creature.stressTime >= creature.maxStressTime) { currentState = STATES.DEAD; }
+
+                    creature.vx *= creature.friction; creature.vy *= creature.friction;
+                    creature.x += creature.vx; creature.y += creature.vy;
+
+                    let distFromCenterX = creature.x - w/2;
+                    let distFromCenterY = creature.y - h/2;
+                    let distFromCenter = Math.sqrt(distFromCenterX*distFromCenterX + distFromCenterY*distFromCenterY);
+                    if (distFromCenter + creature.size > boundaryRadius) {
+                        let normalX = distFromCenterX / distFromCenter;
+                        let normalY = distFromCenterY / distFromCenter;
+                        creature.x = w/2 + normalX * (boundaryRadius - creature.size);
+                        creature.y = h/2 + normalY * (boundaryRadius - creature.size);
+                        creature.vx -= normalX * 2; creature.vy -= normalY * 2;
+                    }
+                    break;
+                case STATES.DEAD:
+                    break;
+            }
+
+            drawCreature();
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
