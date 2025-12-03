@@ -1,7 +1,8 @@
 [
-  { "title": "땅따묵기", "url": "sas/landwar.html", "thumb": "thumbnail/landwar.jpg", "tags": ["오락실게임"], "desc": "시험운행중" },
+  { "title": "땅따묵기", "url": "sas/landwar.html", "thumb": "thumbnail/landwar.jpg", "tags": ["오락실게임"], "desc": "추억의 땅따먹기" },
   { "title": "뱀꼬리", "url": "sas/snake.html", "thumb": "thumbnail/snake.jpg", "tags": ["플래시게임"], "desc": "빠름 주의" }
 ]
+
 
 
 
