@@ -3,381 +3,344 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>sas</title>
+<title>SAskitchen</title>
 <style>
-  :root{
-    --bg:#050818;
-    --bg2:#070c21;
-    --panel:#0b1024;
-    --ink:#eef2ff;
-    --muted:#9aa3c7;
-    --accent:#7b8cff;
-    --accent2:#22c55e;
-    --danger:#f97373;
-    --border:#1f2937;
-    --chip:#111827;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{
-    background:radial-gradient(900px 600px at 10% 0%,#1d2144 0,#050816 60%,#020312 100%);
-    color:var(--ink);
-    font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto;
-  }
-  body{
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-  }
-  .page{
-    width:100%;
-    max-width:1200px;
-    padding:16px;
+  :root {
+    /* 밝은 파스텔 톤 테마 */
+    --bg-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+    --text-main: #2d3748;
+    --text-sub: #718096;
+    --accent: #667eea; /* 부드러운 블루 */
+    --card-bg: #ffffff;
+    --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --card-radius: 16px;
   }
 
-  header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    margin-bottom:14px;
-  }
-  .brand{
-    display:flex;
-    align-items:center;
-    gap:10px;
-  }
-  .brand-icon{
-    width:32px;height:32px;border-radius:999px;
-    background:conic-gradient(from 200deg,#22c1c3,#4b6bff,#ff3cac,#22c1c3);
-    display:grid;place-items:center;
-    box-shadow:0 0 18px rgba(120,113,255,.6);
-  }
-  .brand-icon span{font-size:14px}
-  .brand-text{display:flex;flex-direction:column}
-  .brand-title{font-weight:700;font-size:18px}
-  .brand-sub{font-size:12px;color:var(--muted)}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .nav-chips{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    justify-content:flex-end;
-  }
-  .chip-btn{
-    border-radius:999px;
-    padding:6px 12px;
-    border:1px solid rgba(148,163,184,.4);
-    background:rgba(15,23,42,.85);
-    color:var(--muted);
-    font-size:12px;
-    cursor:pointer;
+  body {
+    background: #f3e7e9; /* fallback */
+    background: linear-gradient(to top, #dad4ec 0%, #f3e7e9 99%, #e3eeff 100%); /* 파스텔 그라디언트 */
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
   }
 
-  .hero{
-    background:radial-gradient(900px 500px at 0% 0%,rgba(129,140,248,.35),transparent 60%),
-               radial-gradient(600px 400px at 100% 0%,rgba(45,212,191,.28),transparent 60%),
-               #050816;
-    border-radius:22px;
-    border:1px solid rgba(148,163,184,.35);
-    padding:18px;
-    display:grid;
-    grid-template-columns:minmax(0,1.5fr) minmax(0,1.2fr);
-    gap:16px;
-    margin-bottom:18px;
-    box-shadow:0 20px 55px rgba(15,23,42,.8);
-  }
-  .hero-kicker{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    background:rgba(15,23,42,.95);
-    border-radius:999px;
-    padding:5px 10px;
-    border:1px solid rgba(55,65,81,.8);
-    font-size:11px;
-    color:var(--muted);
-    margin-bottom:10px;
-  }
-  .hero-kicker span:last-child{color:#a5b4fc;font-weight:600}
-  .hero-main-title{
-    font-size:22px;font-weight:800;letter-spacing:.02em;margin-bottom:6px;
-  }
-  .hero-text{
-    font-size:13px;color:#cbd5ff;margin-bottom:10px;
-  }
-  .hero-badges{
-    display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;
-  }
-  .pill{
-    border-radius:999px;
-    background:rgba(15,23,42,.9);
-    border:1px solid rgba(148,163,184,.5);
-    padding:4px 9px;
-    font-size:11px;
-    color:var(--muted);
-  }
-  .hero-buttons{display:flex;flex-wrap:wrap;gap:8px}
-  .btn-primary{
-    border:none;
-    border-radius:999px;
-    padding:8px 16px;
-    font-size:13px;
-    font-weight:600;
-    cursor:pointer;
-    background:linear-gradient(135deg,#22c55e,#16a34a);
-    color:#022c22;
-    box-shadow:0 12px 30px rgba(34,197,94,.45);
-  }
-  .btn-ghost{
-    border-radius:999px;
-    border:1px solid rgba(148,163,184,.6);
-    padding:8px 13px;
-    background:rgba(15,23,42,.9);
-    color:var(--muted);
-    font-size:12px;
-    cursor:pointer;
+  .page {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
-  .hero-right{
-    border-radius:18px;
-    background:
-      radial-gradient(circle at 10% 0%,rgba(244,244,255,.5),transparent 40%),
-      radial-gradient(circle at 90% 100%,rgba(59,130,246,.45),transparent 50%),
-      linear-gradient(135deg,#020617,#020617 30%,#0b1120);
-    position:relative;
-    overflow:hidden;
-    min-height:150px;
-    padding:16px;
+  /* 1. 헤더 & 타이틀 */
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-top: 20px;
   }
-  .hero-tag{
-    position:absolute;top:12px;left:14px;
-    font-size:11px;color:#e5e7eb;opacity:.85;
+  
+  .main-title {
+    font-size: 3.5rem; /* 아주 크게 */
+    font-weight: 900; /* 아주 굵게 */
+    letter-spacing: -1px;
+    color: #2d3748;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 0px rgba(255,255,255,0.5);
   }
-  .hero-graphic{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-  .hero-bar{
-    width:140px;height:140px;border-radius:32px;
-    background:conic-gradient(from 210deg,#22c1c3,#4b6bff,#ff3cac,#22c1c3);
-    filter:blur(1px);opacity:.9;
-  }
-  .hero-overlay{
-    position:absolute;inset:0;
-    background:radial-gradient(circle at 30% 0%,rgba(15,23,42,.0),rgba(15,23,42,.7) 58%);
+  
+  .sub-title {
+    font-size: 1rem;
+    color: var(--text-sub);
+    font-weight: 500;
   }
 
-  .toolbar{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:12px;
-    margin-bottom:14px;
-  }
-  .search-group{position:relative;flex:1 1 260px;max-width:420px}
-  .search-input{
-    width:100%;
-    padding:8px 32px 8px 32px;
-    border-radius:999px;
-    border:1px solid rgba(75,85,99,.9);
-    background:rgba(15,23,42,.9);
-    color:var(--ink);
-    font-size:13px;
-  }
-  .search-input::placeholder{color:rgba(148,163,184,.8)}
-  .search-icon{
-    position:absolute;left:10px;top:50%;transform:translateY(-50%);
-    font-size:15px;opacity:.7;
-  }
-  .search-help{font-size:11px;color:var(--muted);margin-top:3px}
-
-  .filter-chips{display:flex;flex-wrap:wrap;gap:6px}
-  .filter-chip{
-    border-radius:999px;
-    border:1px solid rgba(75,85,99,.9);
-    padding:4px 10px;
-    font-size:11px;
-    color:var(--muted);
-    cursor:pointer;
-    background:rgba(15,23,42,.9);
-  }
-  .filter-chip.active{
-    background:rgba(59,130,246,.15);
-    border-color:#60a5fa;
-    color:#e5e7eb;
+  /* 2. 검색 & 필터 (심플하게) */
+  .toolbar {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
   }
 
-  h2.section-title{
-    font-size:16px;font-weight:700;margin:10px 0 6px;letter-spacing:.08em;
+  .search-input {
+    width: 100%;
+    padding: 12px 24px;
+    border-radius: 99px;
+    border: 2px solid #e2e8f0;
+    font-size: 16px;
+    background: rgba(255,255,255,0.8);
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
   }
 
-  .grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
-    gap:14px;
-    margin-top:6px;
-    margin-bottom:26px;
+  .filter-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .filter-chip {
+    background: rgba(255,255,255,0.6);
+    border: 1px solid #cbd5e0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-chip.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    font-weight: 600;
   }
 
-  .card{
-    background:linear-gradient(135deg,#020617,#020617 50%,#020920);
-    border-radius:18px;
-    border:1px solid rgba(30,64,175,.7);
-    overflow:hidden;
-    display:flex;
-    flex-direction:column;
-    box-shadow:0 12px 35px rgba(15,23,42,.85);
-  }
-  .thumb{
-    width:100%;
-    aspect-ratio:16/9;
-    object-fit:cover;
-    background:radial-gradient(circle at 0 0,#1d4ed8,transparent 60%),
-               radial-gradient(circle at 100% 100%,#22c55e,transparent 60%),
-               #020617;
-  }
-  .thumb-placeholder{
-    display:grid;place-items:center;
-    font-size:12px;color:#a5b4fc;
-  }
-  .meta{padding:10px 12px 8px}
-  .title{font-size:14px;font-weight:700}
-  .desc{font-size:12px;color:var(--muted);margin-top:3px;margin-bottom:8px}
-  .tag-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
-  .tag-pill{
-    font-size:10px;
-    padding:3px 7px;
-    border-radius:999px;
-    background:rgba(15,23,42,.9);
-    color:#a5b4fc;
-    border:1px solid rgba(79,70,229,.6);
-  }
-  .play-btn{
-    margin:0 10px 10px;
-    padding:7px 10px;
-    border-radius:999px;
-    border:none;
-    background:linear-gradient(135deg,#22c55e,#16a34a);
-    color:#022c22;
-    font-size:12px;
-    font-weight:600;
-    cursor:pointer;
+  /* 3. 그리드 & 카드 (포커 카드 비율) */
+  .grid {
+    width: 100%;
+    display: grid;
+    /* 카드가 너무 작아지지 않게 최소 220px 설정 */
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+    gap: 24px;
+    margin-bottom: 40px;
   }
 
-  footer{font-size:11px;color:var(--muted);margin-bottom:4px}
-
-  .error-card{
-    max-width:360px;
-    min-width:260px;
-    background:#1b0b0e;
-    border-radius:16px;
-    border:1px solid rgba(248,113,113,.7);
-    padding:14px;
-    color:#fecaca;
-    font-size:13px;
-    line-height:1.5;
-    white-space:normal;
-    word-break:keep-all;
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(255,255,255,0.6);
+    position: relative;
+    cursor: pointer;
   }
-  .error-card strong{color:#fee2e2}
-  .error-card small{font-size:11px;color:#fca5a5}
+  
+  .card:hover {
+    transform: translateY(-8px); /* 둥실 떠오르는 효과 */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
 
-  @media (max-width:840px){
-    .hero{grid-template-columns:1fr}
-    .hero-right{order:-1;min-height:160px}
+  /* 포커 카드 비율을 위한 썸네일 영역 */
+  .thumb-wrapper {
+    width: 100%;
+    aspect-ratio: 2 / 3; /* 세로로 긴 비율 */
+    overflow: hidden;
+    background: #edf2f7;
+    position: relative;
+  }
+  
+  .thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 꽉 차게 */
+    transition: transform 0.5s ease;
+  }
+  
+  .card:hover .thumb {
+    transform: scale(1.05);
+  }
+
+  .thumb-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a0aec0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .meta {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: #fff;
+  }
+
+  .title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 6px;
+  }
+
+  .desc {
+    font-size: 13px;
+    color: #718096;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 2줄까지만 표시 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .play-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--text-main);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: auto;
+    transition: background 0.2s;
+  }
+  .play-btn:hover {
+    background: var(--accent);
+  }
+
+  /* 태그 */
+  .tag-row {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .tag-pill {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* 오류 메시지 */
+  .error-card {
+    background: #fff;
+    border-left: 4px solid #fc8181;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    color: #e53e3e;
+  }
+
+  footer {
+    font-size: 12px;
+    color: #a0aec0;
+    margin-top: 20px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 600px) {
+    .main-title { font-size: 2.5rem; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } /* 모바일에서 2열 */
+    .thumb-wrapper { aspect-ratio: 3 / 4; } /* 모바일은 조금 덜 길게 */
   }
 </style>
 </head>
 <body>
+
 <div class="page">
   <header>
-    <div class="brand">
-      <div class="brand-icon"><span>🎮</span></div>
-      <div class="brand-text">
-        <div class="brand-title">sas</div>
-        <div class="brand-sub">HTML5 미니 게임 컬렉션</div>
-      </div>
+    <div class="main-title">SAskitchen</div>
+    <div class="sub-title">Simple & Addictive HTML5 Games</div>
   </header>
 
+  <section class="toolbar">
+    <input id="q" class="search-input" type="search" placeholder="검색할 게임 이름을 입력하세요...">
+    
+    <div class="filter-chips" id="tag-filters">
+      <div class="filter-chip active" data-tag="all">All</div>
+      <div class="filter-chip" data-tag="브레이크아웃">Breakout</div>
+      <div class="filter-chip" data-tag="보드">Board</div>
+      <div class="filter-chip" data-tag="퍼즐">Puzzle</div>
+      <div class="filter-chip" data-tag="슈팅">Shooting</div>
+      <div class="filter-chip" data-tag="AI">AI</div>
+    </div>
+    <div id="game-count-text" style="font-size:12px; color:#a0aec0; margin-top:5px;"></div>
   </section>
 
-  <section class="toolbar">
-    <div class="search-group">
-      <span class="search-icon">🔍</span>
-      <input id="q" class="search-input" type="search" placeholder="게임 검색… (이름, 태그)">
-      <div class="search-help" id="game-count-text"></div>
-    </div>
-    <div class="filter-chips" id="tag-filters">
-      <button class="filter-chip active" data-tag="all">전체</button>
-      <button class="filter-chip" data-tag="브레이크아웃">브레이크아웃</button>
-      <button class="filter-chip" data-tag="보드">보드</button>
-      <button class="filter-chip" data-tag="퍼즐">퍼즐</button>
-      <button class="filter-chip" data-tag="슈팅">슈팅</button>
-      <button class="filter-chip" data-tag="AI">AI</button>
-    </div>
-    <h2 class="section-title">PLAY FREE HTML5 GAMES!</h2>
-  <div id="grid" class="grid" aria-live="polite"></div>
+  <div id="grid" class="grid"></div>
 
-  <footer>© 2024 sas — HTML5 데모 모음</footer>
+  <footer>
+    © 2025 SAskitchen — Designed for Fun
+  </footer>
 </div>
 
 <script>
 (async function(){
-  const JSON_PATH = 'sas/games.json';   // ★ sas/games.json 사용
+  const JSON_PATH = 'sas/games.json'; // 경로 유지
 
-  const grid   = document.getElementById('grid');
-  const q      = document.getElementById('q');
+  const grid = document.getElementById('grid');
+  const q = document.getElementById('q');
   const countText = document.getElementById('game-count-text');
   const filterBar = document.getElementById('tag-filters');
-  const btnScroll = document.getElementById('btn-scroll-grid');
 
   let games = [];
   let currentTag = 'all';
 
-  try{
+  // 게임 목록 불러오기
+  try {
     const res = await fetch(JSON_PATH, {cache:'no-store'});
-    if(!res.ok){
-      throw new Error('파일을 찾을 수 없습니다. HTTP Status: '+res.status);
-    }
+    if(!res.ok) throw new Error('HTTP Status: '+res.status);
     games = await res.json();
-    console.log('[sas] games.json loaded from', JSON_PATH);
-  }catch(e){
+    console.log('[sas] Games loaded:', games.length);
+  } catch(e) {
     console.error(e);
     grid.innerHTML = `
       <div class="error-card">
-        <strong>⚠ 게임 목록 (<code>${JSON_PATH}</code>)을 불러오지 못했습니다.</strong>
-        <p style="margin-top:6px;">
-          <code>index.html</code>이 있는 폴더 아래의
-          <code>sas/games.json</code> 경로에 파일이 있는지 확인해주세요.
-        </p>
-        <small>(오류 상세: ${e.message || '네트워크 / CORS 오류'})</small>
+        <strong>게임 목록을 불러오지 못했습니다.</strong><br>
+        <small>(${JSON_PATH} 경로를 확인해주세요)</small>
       </div>
     `;
-    countText.textContent = '';
     return;
   }
 
-  function buildCard(g){
+  // 카드 HTML 생성 (포커카드 스타일)
+  function buildCard(g) {
     const thumbHtml = g.thumb
-      ? `<img class="thumb" src="${g.thumb}" alt="">`
-      : `<div class="thumb thumb-placeholder">No Thumbnail</div>`;
+      ? `<img class="thumb" src="${g.thumb}" alt="${g.title}">`
+      : `<div class="thumb thumb-placeholder">No Image</div>`;
+    
     const tagsHtml = (g.tags || []).map(t => `<span class="tag-pill">${t}</span>`).join('');
+
     return `
-      <article class="card">
-        ${thumbHtml}
-        <div class="meta">
-          <div class="title">${g.title}</div>
-          <p class="desc">${g.desc || ''}</p>
+      <article class="card" onclick="window.open('${g.url}','_blank')">
+        <div class="thumb-wrapper">
+          ${thumbHtml}
           <div class="tag-row">${tagsHtml}</div>
         </div>
-        <div style="padding-bottom:6px;">
-          <button class="play-btn" onclick="window.open('${g.url}','_blank')">PLAY NOW!</button>
+        <div class="meta">
+          <div>
+            <div class="title">${g.title}</div>
+            <p class="desc">${g.desc || 'No description available.'}</p>
+          </div>
+          <button class="play-btn">PLAY</button>
         </div>
       </article>
     `;
   }
 
-  function applyFilter(text, tag){
+  // 필터링
+  function applyFilter(text, tag) {
     const t = text.trim().toLowerCase();
-    return games.filter(g=>{
+    return games.filter(g => {
       if(tag !== 'all' && !(g.tags || []).includes(tag)) return false;
       if(!t) return true;
       const blob = (g.title+' '+(g.desc||'')+' '+(g.tags||[]).join(' ')).toLowerCase();
@@ -385,108 +348,58 @@
     });
   }
 
-  function render(){
+  // 렌더링
+  function render() {
     const list = applyFilter(q.value, currentTag);
     grid.innerHTML = list.length
       ? list.map(buildCard).join('')
-      : `<div style="color:#9aa3c7;font-size:13px;">검색 결과가 없습니다.</div>`;
-    countText.textContent = `총 ${games.length}개의 게임이 준비되어 있습니다.`;
+      : `<div style="grid-column:1/-1; text-align:center; color:#a0aec0; padding:40px;">검색 결과가 없습니다.</div>`;
+    
+    if(countText) countText.textContent = `${list.length} Games Ready`;
   }
 
-  q.addEventListener('input', render);
-
-  filterBar.addEventListener('click', e=>{
-    const btn = e.target.closest('.filter-chip');
-    if(!btn) return;
-    [...filterBar.querySelectorAll('.filter-chip')]
-      .forEach(b=>b.classList.toggle('active', b===btn));
-    currentTag = btn.dataset.tag;
-    render();
-  });
-
-  btnScroll.addEventListener('click', ()=>{
-    grid.scrollIntoView({behavior:'smooth',block:'start'});
-  });
+  // 이벤트 리스너
+  if(q) q.addEventListener('input', render);
+  
+  if(filterBar) {
+    filterBar.addEventListener('click', e => {
+      const btn = e.target.closest('.filter-chip');
+      if(!btn) return;
+      [...filterBar.querySelectorAll('.filter-chip')].forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTag = btn.dataset.tag;
+      render();
+    });
+  }
 
   render();
 })();
 </script>
-  <script type="module">
+
+<script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBc3aB342Yp0hjLLj4hw0xJ-s8hOU_OmMg",
-  authDomain: "saskitchen-rank-96f61.firebaseapp.com",
-  projectId: "saskitchen-rank-96f61",
-  storageBucket: "saskitchen-rank-96f61.firebasestorage.app",
-  messagingSenderId: "785643491182",
-  appId: "1:785643491182:web:fc195dbaa79a6eee047b7f"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyBc3aB342Yp0hjLLj4hw0xJ-s8hOU_OmMg",
+    authDomain: "saskitchen-rank-96f61.firebaseapp.com",
+    projectId: "saskitchen-rank-96f61",
+    storageBucket: "saskitchen-rank-96f61.firebasestorage.app",
+    messagingSenderId: "785643491182",
+    appId: "1:785643491182:web:fc195dbaa79a6eee047b7f"
+  };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // 1. 점수 저장 함수
-  window.saveScore = async function(nickname, score) {
-    try {
-      await addDoc(collection(db, "leaderboard"), {
-        name: nickname,
-        score: Number(score),
-        date: new Date().toISOString()
-      });
-      alert("✅ 기록 저장 완료!");
-      loadRankings(); // 목록 새로고침
-    } catch (e) {
-      console.error("Error:", e);
-      alert("저장 실패 ㅠㅠ (콘솔 확인)");
-    }
-  }
-
-  // 2. 랭킹 불러오기 함수
-  async function loadRankings() {
-    const list = document.getElementById("ranking-list");
-    const q = query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(5));
+  // HTML 요소가 없어도 스크립트 에러가 나지 않도록 try-catch 처리
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    console.log("Firebase initialized (Leaderboard hidden)");
     
-    try {
-      const snapshot = await getDocs(q);
-      list.innerHTML = ""; // 초기화
-      let rank = 1;
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const li = document.createElement("li");
-        // 1등은 특별하게 이모지 붙이기
-        const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}위`;
-        li.innerHTML = `<span style="color:#7b8cff; font-weight:bold; margin-right:10px;">${medal}</span> ${data.name} <span style="float:right; color:#22c55e;">${data.score}점</span>`;
-        list.appendChild(li);
-        rank++;
-      });
-      if(rank === 1) list.innerHTML = "<li>아직 등록된 랭킹이 없어요.</li>";
-    } catch (e) {
-      console.error(e);
-      list.innerHTML = "<li>랭킹 로드 실패 (설정값 확인 필요)</li>";
-    }
+    // 랭킹 로드 로직은 화면에 표시할 요소(ranking-list)가 없으므로 실행하지 않음.
+    // 필요 시 여기에 다시 추가 가능.
+  } catch(e) {
+    console.log("Firebase init skipped or failed:", e);
   }
-  
-  // 3. 테스트용 수동 저장 함수 (버튼 클릭 시 작동)
-  window.manualSave = function() {
-    const name = document.getElementById("test-name").value;
-    const score = document.getElementById("test-score").value;
-    if(name && score) {
-        saveScore(name, score);
-    } else {
-        alert("이름과 점수를 입력해주세요");
-    }
-  }
-
-  // 페이지 열리면 랭킹 로드
-  loadRankings();
 </script>
 </body>
 </html>
-
-
-
-
-
-
