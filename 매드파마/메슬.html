@@ -2,11 +2,11 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Urban Alchemist - High Res Asset Loader</title>
+    <title>Urban Alchemist - Real Assets</title>
     <style>
         body {
             margin: 0;
-            background: #222;
+            background: #1a1a1a;
             display: flex;
             justify_content: center;
             align-items: center;
@@ -16,11 +16,12 @@
             overflow: hidden;
         }
         canvas {
-            background-color: #87CEEB;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            background-color: #333; /* 이미지가 로딩 안 됐을 때 기본 배경색 */
+            box-shadow: 0 0 60px rgba(0,0,0,0.6);
+            border: 4px solid #444;
             border-radius: 4px;
-            /* 이미지가 들어가면 픽셀 처리가 아니라 부드럽게 처리 */
-            image-rendering: auto; 
+            /* 도트 이미지를 쓴다면 선명하게, 고해상도라면 부드럽게 (취향껏 조절 가능) */
+            image-rendering: pixelated; 
         }
         .ui {
             position: absolute;
@@ -34,7 +35,6 @@
             padding: 15px;
             border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.3);
-            backdrop-filter: blur(5px);
         }
         .key {
             display: inline-block;
@@ -77,7 +77,7 @@
             border-radius: 10px;
             overflow: hidden;
             display: none;
-            border: 3px solid #fff;
+            border: 2px solid #fff;
         }
         #chargeFill {
             width: 0%;
@@ -111,42 +111,34 @@
     <canvas id="gameCanvas" width="960" height="540"></canvas>
 
 <script>
-    // =========================================================
-    // PART 1: ASSET CONFIGURATION (리소스 설정 구역)
-    // =========================================================
-    // * 영훈아, 생성된 이미지의 주소(URL)를 여기 따옴표 안에 넣으면 돼!
-    // * 이미지가 없으면 자동으로 '코드 그림' 모드로 동작하니까 걱정 마.
+    // ==================================================================================
+    // [영훈님을 위한 이미지 설정 구역]
+    // * 따옴표("") 안에 이미지 주소(URL)를 넣어주세요.
+    // * 로컬 파일은 브라우저 보안상 바로 쓸 수 없으니, 이미지를 웹(Imgur 등)에 올리고 주소를 따오면 편해.
+    // * 주소를 넣지 않으면(빈칸) 자동으로 '색깔 박스'로 표시돼서 게임은 계속 할 수 있어.
+    // ==================================================================================
     
-    const spriteSrc = {
-        // 플레이어 (매드 사이언티스트) 이미지 URL
-        player: "madp.png", 
-        
-        // 적 (국정원 요원) 이미지 URL
-        enemy: "",
-        
-        // 배경 (강남대로) 이미지 URL
-        background: "background.png",
-        
-        // 장애물 (자동차 등) - 필요하면 추가 가능
-        car: "car.png"
-        stall: "nojum.png"  		
-		pot: "pot.png"
+    const imageUrls = {
+        // 1. 캐릭터 (오른쪽을 보고 있는 투명 배경 PNG 추천)
+        player: "madp.png",  // 매드 사이언티스트 이미지 주소
+        enemy: "",   // 국정원 요원/적군 이미지 주소
+
+        // 2. 배경 (960x540 사이즈 권장)
+        background: "background.png", // 강남대로 배경 이미지 주소
+
+        // 3. 아이템 & 이펙트
+        potion: "",     // 물약 이미지
+        explosion: "",  // 폭발 이펙트 이미지
+
+        // 4. 장애물 (엄폐물)
+        car: "car.png",     // 승용차
+        stall: "nojum.png",   // 노점상
+        vending: "", // 자판기
+        pot: "pot.png"      // 화분
     };
 
-    // 이미지 객체 로딩 시스템
-    const assets = {};
-    for (const [key, src] of Object.entries(spriteSrc)) {
-        if (src) {
-            const img = new Image();
-            img.src = src;
-            assets[key] = img;
-        }
-    }
-
-    // =========================================================
-    // PART 2: GAME LOGIC (게임 로직 구역)
-    // =========================================================
-
+    // ==================================================================================
+    
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const scoreBoard = document.getElementById('scoreBoard');
@@ -154,23 +146,37 @@
     const chargeBar = document.getElementById('chargeBar');
     const chargeFill = document.getElementById('chargeFill');
 
+    // 이미지 로딩 시스템
+    const assets = {};
+    for (const [key, url] of Object.entries(imageUrls)) {
+        if (url && url.trim() !== "") {
+            const img = new Image();
+            img.src = url;
+            assets[key] = img;
+        }
+    }
+
+    // === 게임 설정 변수 ===
     const worldWidth = 8000; 
     const worldHeight = canvas.height;
     const gravity = 0.8;
     const baseGroundY = worldHeight - 80; 
-    const charWidth = 50; 
-    const charHeight = 80; 
-
+    
+    // 캐릭터 크기 (이미지 비율에 맞게 조절 가능)
+    const charWidth = 60; 
+    const charHeight = 90; 
+    
     let gameFrame = 0; 
     let cameraX = 0;
     let gameOver = false;
     let chargeStartTime = 0;
     let isCharging = false;
     const maxChargeTime = 1000; 
-    const keys = { w: false, a: false, s: false, d: false, l: false };
-    const bumps = [];
 
-    // --- Helper Functions ---
+    const keys = { w: false, a: false, s: false, d: false, l: false };
+    const bumps = []; // 지형 둔턱
+
+    // === 유틸리티 ===
     function checkCollision(rect1, rect2) {
         return (rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
                 rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y);
@@ -203,217 +209,148 @@
         return groundY;
     }
 
-    // --- Rendering Functions (Hybrid: Image or Code) ---
-    function drawRect(ctx, x, y, w, h, color) {
-        ctx.fillStyle = color;
-        ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
+    // === 렌더링 함수 (이미지 위주) ===
+    function drawSprite(ctx, img, x, y, w, h, direction = 1, rotation = 0) {
+        const dx = x - cameraX;
+        const dy = y;
+        
+        // 화면 밖 그리기 방지
+        if (dx < -w || dx > canvas.width + w) return;
+
+        ctx.save();
+        // 중심축 이동 (회전/반전을 위해)
+        ctx.translate(dx + w / 2, dy + h / 2);
+        
+        if (direction === -1) ctx.scale(-1, 1); // 좌우 반전
+        if (rotation !== 0) ctx.rotate(rotation);
+
+        try {
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        } catch (e) {
+            // 이미지 로드 중 에러나면 박스 그리기
+            ctx.fillStyle = 'magenta';
+            ctx.fillRect(-w / 2, -h / 2, w, h);
+        }
+        ctx.restore();
     }
 
     function drawCharacter(ctx, x, y, direction, isEnemy) {
-        const dx = x - cameraX;
-        const dy = y;
-        if (dx < -100 || dx > canvas.width + 100) return;
-
-        // 1. 이미지가 로딩되었는지 확인
         const img = isEnemy ? assets.enemy : assets.player;
         
+        // 이미지가 있으면 이미지 그리기
         if (img && img.complete && img.naturalHeight !== 0) {
-            // [이미지 모드]
-            ctx.save();
-            if (direction === -1) {
-                // 왼쪽 볼 때 이미지 좌우 반전
-                ctx.translate(dx + charWidth, dy);
-                ctx.scale(-1, 1);
-                ctx.drawImage(img, 0, 0, charWidth, charHeight);
-            } else {
-                ctx.drawImage(img, dx, dy, charWidth, charHeight);
-            }
-            ctx.restore();
+            drawSprite(ctx, img, x, y, charWidth, charHeight, direction);
         } else {
-            // [코드 그림 모드 - 기존의 정교한 드로잉 폴백]
-            renderProceduralCharacter(ctx, dx, dy, direction, isEnemy);
+            // 이미지가 없으면 대체 박스 (Fallback)
+            const dx = x - cameraX;
+            if (dx < -100 || dx > canvas.width + 100) return;
+            
+            ctx.fillStyle = isEnemy ? '#333' : '#F5F5F5'; // 적:검정, 나:흰색
+            ctx.fillRect(dx, y, charWidth, charHeight);
+            
+            // 눈 (방향 표시용)
+            ctx.fillStyle = 'red';
+            if(direction === 1) ctx.fillRect(dx + charWidth - 15, y + 10, 10, 10);
+            else ctx.fillRect(dx + 5, y + 10, 10, 10);
+            
+            // 이름표
+            ctx.fillStyle = 'white';
+            ctx.font = '12px sans-serif';
+            ctx.fillText(isEnemy ? "AGENT" : "YOU", dx, y - 5);
         }
     }
 
-    function renderProceduralCharacter(ctx, dx, dy, direction, isEnemy) {
-        // 그림자
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath(); ctx.ellipse(dx + charWidth/2, dy + charHeight - 2, 18, 6, 0, 0, Math.PI*2); ctx.fill();
-
-        if (!isEnemy) {
-            // 매드 사이언티스트
-            drawRect(ctx, dx + 8, dy + 70, 14, 10, '#5D4037'); drawRect(ctx, dx + 28, dy + 70, 14, 10, '#5D4037'); // 신발
-            drawRect(ctx, dx + 10, dy + 50, 12, 20, '#424242'); drawRect(ctx, dx + 28, dy + 50, 12, 20, '#424242'); // 바지
-            drawRect(ctx, dx + 18, dy + 25, 14, 25, '#2E7D32'); // 셔츠
-            
-            // 가운
-            ctx.fillStyle = '#F5F5F5';
-            drawRect(ctx, dx + 4, dy + 20, 14, 45, '#FFFFFF'); drawRect(ctx, dx + 32, dy + 20, 14, 45, '#FFFFFF');
-            
-            drawRect(ctx, dx + 10, dy + 5, 30, 25, '#FFCCBC'); // 얼굴
-            
-            // 고글
-            drawRect(ctx, dx + 8, dy + 10, 34, 10, '#212121'); 
-            drawRect(ctx, dx + 12, dy + 8, 10, 10, '#32CD32'); drawRect(ctx, dx + 28, dy + 8, 10, 10, '#32CD32');
-
-            // 머리카락
-            ctx.fillStyle = '#E0E0E0';
-            ctx.beginPath(); ctx.moveTo(dx+5, dy+5); ctx.lineTo(dx-5, dy-10); ctx.lineTo(dx+10, dy-5); 
-            ctx.lineTo(dx+25, dy-15); ctx.lineTo(dx+40, dy-5); ctx.lineTo(dx+55, dy-10); ctx.lineTo(dx+45, dy+10); ctx.fill();
-
-            // 팔
-             ctx.fillStyle = '#FFF';
-            if (direction === 1) { 
-                drawRect(ctx, dx + 25, dy + 25, 12, 20, '#FFFFFF'); 
-                drawRect(ctx, dx + 35, dy + 35, 10, 10, '#32CD32'); 
-            } else {
-                drawRect(ctx, dx + 12, dy + 25, 12, 20, '#FFFFFF');
-                drawRect(ctx, dx + 5, dy + 35, 10, 10, '#32CD32');
-            }
-        } else {
-            // 국정원 요원
-            drawRect(ctx, dx + 8, dy + 75, 14, 5, '#000'); drawRect(ctx, dx + 28, dy + 75, 14, 5, '#000'); // 구두
-            drawRect(ctx, dx + 10, dy + 50, 12, 25, '#212121'); drawRect(ctx, dx + 28, dy + 50, 12, 25, '#212121'); // 바지
-            drawRect(ctx, dx + 5, dy + 25, 40, 30, '#212121'); // 자켓
-            drawRect(ctx, dx + 23, dy + 25, 4, 20, '#000'); // 넥타이
-            drawRect(ctx, dx + 12, dy + 5, 26, 22, '#FFCCBC'); // 얼굴
-            drawRect(ctx, dx + 12, dy + 10, 26, 6, '#000'); // 선글라스
-            drawRect(ctx, dx + 10, dy - 2, 30, 8, '#000'); // 머리
-
-            // 권총
-            ctx.fillStyle = '#212121';
-            if (direction === 1) { 
-                drawRect(ctx, dx + 25, dy + 25, 12, 20, '#212121');
-                drawRect(ctx, dx + 40, dy + 38, 12, 5, '#444'); drawRect(ctx, dx + 40, dy + 40, 4, 6, '#222');
-            } else { 
-                drawRect(ctx, dx + 12, dy + 25, 12, 20, '#212121');
-                drawRect(ctx, dx - 2, dy + 38, 12, 5, '#444'); drawRect(ctx, dx + 6, dy + 40, 4, 6, '#222');
-            }
-        }
-    }
-
-    // --- Background & Objects ---
+    // === 배경 그리기 ===
     class Background {
         draw() {
-            // 배경 이미지가 있으면 배경 이미지 사용
+            // 1. 배경 이미지
             if (assets.background && assets.background.complete && assets.background.naturalHeight !== 0) {
-                 // 시차 스크롤링 (Parallax) 흉내
-                 let bgW = assets.background.width;
-                 let bgH = assets.background.height;
-                 // 비율 유지하면서 꽉 채우기
-                 let scale = canvas.height / bgH;
-                 let scaledW = bgW * scale;
-                 
-                 let offsetX = (cameraX * 0.2) % scaledW;
-                 
-                 ctx.drawImage(assets.background, -offsetX, 0, scaledW, canvas.height);
-                 ctx.drawImage(assets.background, -offsetX + scaledW, 0, scaledW, canvas.height);
-                 // 화면이 넓을 수 있으니 하나 더
-                 if (-offsetX + scaledW < canvas.width) {
-                     ctx.drawImage(assets.background, -offsetX + scaledW * 2, 0, scaledW, canvas.height);
-                 }
-            } else {
-                // [코드 배경 모드 - 기존 강남대로]
-                this.drawProceduralBackground();
-            }
-
-            // 바닥 및 둔턱 (이미지 여부와 상관없이 게임성 위해 코드 드로잉 유지)
-            this.drawGround();
-        }
-
-        drawProceduralBackground() {
-            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            grad.addColorStop(0, '#4FC3F7'); grad.addColorStop(1, '#B3E5FC');
-            ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // 배경은 카메라 이동에 따라 약간 느리게 움직임 (Parallax)
+                let bgW = canvas.width; // 화면 꽉 채우기
+                let bgH = canvas.height;
+                
+                // 단순 반복 패턴 대신 큰 이미지 하나를 가정하거나, 반복
+                // 여기서는 반복으로 처리
+                let offsetX = (cameraX * 0.2) % bgW;
+                
+                ctx.drawImage(assets.background, -offsetX, 0, bgW, bgH);
+                ctx.drawImage(assets.background, -offsetX + bgW, 0, bgW, bgH);
+                if(-offsetX + bgW < canvas.width) ctx.drawImage(assets.background, -offsetX + bgW * 2, 0, bgW, bgH);
             
-            // 태양
-            drawRect(ctx, 850, 80, 60, 60, '#FFF59D');
-
-            const buildingColors = ['#E1F5FE', '#B3E5FC', '#81D4FA'];
-            for(let i=0; i<12; i++) {
-                let bx = (i * 250 - (cameraX * 0.1)) % (worldWidth + 1000);
-                if (bx < -300) bx += worldWidth + 1000;
-                let bh = 250 + (i % 4) * 60; let bw = 140;
-                if (bx > -bw && bx < canvas.width + bw) {
-                    ctx.fillStyle = buildingColors[i % 3];
-                    ctx.fillRect(bx, baseGroundY - bh, bw, bh); 
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                    for(let wy = baseGroundY - bh + 20; wy < baseGroundY - 20; wy += 30) {
-                        for(let wx = bx + 20; wx < bx + bw - 20; wx += 25) { ctx.fillRect(wx, wy, 15, 20); }
-                    }
-                }
+            } else {
+                // 이미지가 없으면 기본 하늘색 배경
+                let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                grad.addColorStop(0, '#87CEEB'); grad.addColorStop(1, '#E0F7FA');
+                ctx.fillStyle = grad; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#555';
+                ctx.font = '20px sans-serif';
+                ctx.fillText("배경 이미지를 설정해주세요 (background)", 50, 100);
             }
-        }
 
-        drawGround() {
-            // 인도
-            ctx.fillStyle = '#E0E0E0'; ctx.fillRect(0, baseGroundY, canvas.width, worldHeight - baseGroundY);
-            ctx.fillStyle = '#000'; ctx.fillRect(0, baseGroundY, canvas.width, 4);
+            // 2. 바닥 (이미지가 있어도 바닥 구분은 필요함)
+            // 투명도가 있는 검정색으로 살짝 덮어서 플레이 영역 표시
+            ctx.fillStyle = '#3E2723'; 
+            ctx.fillRect(0, baseGroundY, canvas.width, worldHeight - baseGroundY);
+            
+            // 상단 경계선
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, baseGroundY, canvas.width, 4);
 
-            // 둔턱
+            // 3. 지형 둔턱
             for(let bump of bumps) {
                 let drawBumpX = bump.x - cameraX;
                 if (drawBumpX > canvas.width || drawBumpX + bump.width < 0) continue;
-                ctx.fillStyle = '#BDBDBD'; 
-                ctx.beginPath(); ctx.moveTo(drawBumpX, baseGroundY);
+                
+                ctx.fillStyle = '#5D4037'; 
+                ctx.beginPath();
+                ctx.moveTo(drawBumpX, baseGroundY);
                 ctx.lineTo(drawBumpX + bump.width/2, baseGroundY - bump.height);
-                ctx.lineTo(drawBumpX + bump.width, baseGroundY); ctx.fill();
-                ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.stroke();
+                ctx.lineTo(drawBumpX + bump.width, baseGroundY);
+                ctx.fill();
+                ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.stroke();
             }
         }
     }
 
+    // === 장애물 클래스 ===
     class Obstacle {
         constructor(x, type) {
-            this.x = x; this.type = type;
-            if (type === 'car') { this.width = 160; this.height = 50; } 
-            else if (type === 'stall') { this.width = 110; this.height = 80; } 
-            else if (type === 'vending') { this.width = 60; this.height = 70; } 
-            else if (type === 'pot') { this.width = 40; this.height = 40; } 
+            this.x = x; 
+            this.type = type;
+            // 크기 설정
+            if (type === 'car') { this.width = 160; this.height = 60; } 
+            else if (type === 'stall') { this.width = 120; this.height = 90; } 
+            else if (type === 'vending') { this.width = 70; this.height = 80; } 
+            else if (type === 'pot') { this.width = 45; this.height = 45; } 
+            
             this.y = baseGroundY - this.height;
         }
         draw() {
-            const dx = this.x - cameraX;
-            const dy = this.y;
-            if (dx + this.width < -100 || dx > canvas.width + 100) return;
-
-            // 그림자
-            ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(dx + 5, baseGroundY - 4, this.width - 10, 4);
-
-            // 이미지 에셋이 있으면(car 등) 그걸 쓰도록 확장 가능하지만, 
-            // 현재는 캐릭터/배경에 집중하기 위해 장애물은 '고해상도 도트 코드' 유지
-            if (this.type === 'car') {
-                drawRect(ctx, dx, dy + 20, this.width, 30, '#D50000'); 
-                ctx.fillStyle = '#D50000'; ctx.beginPath(); ctx.moveTo(dx, dy + 20); ctx.lineTo(dx + 30, dy); 
-                ctx.lineTo(dx + this.width - 40, dy); ctx.lineTo(dx + this.width, dy + 20); ctx.fill();
-                ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.moveTo(dx + 35, dy + 5); ctx.lineTo(dx + this.width - 45, dy + 5);
-                ctx.lineTo(dx + this.width - 10, dy + 20); ctx.lineTo(dx + 10, dy + 20); ctx.fill();
-                let wheelY = dy + 35;
-                drawRect(ctx, dx + 25, wheelY, 24, 24, '#111'); drawRect(ctx, dx + 30, wheelY + 5, 14, 14, '#9E9E9E');
-                drawRect(ctx, dx + this.width - 50, wheelY, 24, 24, '#111'); drawRect(ctx, dx + this.width - 45, wheelY + 5, 14, 14, '#9E9E9E');
-            } else if (this.type === 'stall') {
-                drawRect(ctx, dx + 10, dy + 40, this.width - 20, 40, '#795548'); 
-                drawRect(ctx, dx + 5, dy + 35, this.width - 10, 5, '#5D4037'); 
-                drawRect(ctx, dx + 10, dy, 5, 40, '#5D4037'); drawRect(ctx, dx + this.width - 15, dy, 5, 40, '#5D4037');
-                for(let i=0; i<this.width; i+=20) { let color = (i/20)%2===0 ? '#FF1744' : '#FFFFFF'; drawRect(ctx, dx + i, dy, 20, 35, color); }
-            } else if (this.type === 'vending') {
-                drawRect(ctx, dx, dy, this.width, this.height, '#1565C0'); 
-                drawRect(ctx, dx + 5, dy + 10, this.width - 10, 35, '#E3F2FD'); 
-                drawRect(ctx, dx + 10, dy + 15, 6, 10, '#F44336'); drawRect(ctx, dx + 20, dy + 15, 6, 10, '#4CAF50');
-                drawRect(ctx, dx + 5, dy + 55, this.width - 10, 10, '#212121'); 
-            } else if (this.type === 'pot') {
-                ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.moveTo(dx + 10, dy + 40); ctx.lineTo(dx + 30, dy + 40);
-                ctx.lineTo(dx + 35, dy + 15); ctx.lineTo(dx + 5, dy + 15); ctx.fill();
-                drawRect(ctx, dx + 15, dy - 5, 10, 20, '#2E7D32'); 
-                ctx.fillStyle = '#43A047'; ctx.beginPath(); ctx.arc(dx + 10, dy + 5, 10, 0, Math.PI*2); ctx.fill();
-                ctx.beginPath(); ctx.arc(dx + 30, dy + 5, 10, 0, Math.PI*2); ctx.fill();
+            // 해당 타입의 이미지가 있는지 확인
+            const img = assets[this.type];
+            
+            if (img && img.complete && img.naturalHeight !== 0) {
+                drawSprite(ctx, img, this.x, this.y, this.width, this.height);
+            } else {
+                // 없으면 대체 도형
+                const dx = this.x - cameraX;
+                if (dx + this.width < -100 || dx > canvas.width + 100) return;
+                
+                if (this.type === 'car') ctx.fillStyle = 'red';
+                else if (this.type === 'stall') ctx.fillStyle = 'brown';
+                else if (this.type === 'vending') ctx.fillStyle = 'blue';
+                else ctx.fillStyle = 'green';
+                
+                ctx.fillRect(dx, this.y, this.width, this.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(this.type, dx + 5, this.y + 15);
             }
         }
     }
 
-    // === Game Loop & Logic Classes (PhysicsEntity, Player, Enemy, Potion, etc.) ===
-    // (이전 코드와 로직은 동일하되, 렌더링 호출만 변경됨)
-    
+    // === 물리 엔티티 ===
     class PhysicsEntity {
         constructor(x, y, width, height) {
             this.x = x; this.y = y; this.width = width; this.height = height;
@@ -491,7 +428,7 @@
                     if(jumpNeeded) { this.vy = this.jumpPower; this.grounded = false; }
                 }
                 this.shootTimer++;
-                if (this.shootTimer % 90 === 0) { bullets.push(new Bullet(this.x, this.y + 30, this.direction)); }
+                if (this.shootTimer % 90 === 0) { bullets.push(new Bullet(this.x, this.y + 35, this.direction)); }
             }
             this.applyPhysics(obstacles);
         }
@@ -500,7 +437,7 @@
 
     class Potion {
         constructor(x, y, direction, powerRatio) {
-            this.x = x; this.y = y; this.width = 16; this.height = 16;
+            this.x = x; this.y = y; this.width = 24; this.height = 24;
             const minVx = 3; const maxVx = 25; const minVy = -6; const maxVy = -20;
             this.vx = (minVx + (maxVx - minVx) * powerRatio) * direction;
             this.vy = minVy + (maxVy - minVy) * powerRatio;
@@ -516,10 +453,15 @@
             this.markedForDeletion = true; explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2));
         }
         draw() {
-            const dx = this.x - cameraX; 
-            ctx.save(); ctx.translate(dx + this.width/2, this.y + this.height/2); ctx.rotate(this.rotation);
-            drawRect(ctx, -6, -6, 12, 12, '#00E676'); drawRect(ctx, -3, -10, 6, 4, '#FFF'); 
-            ctx.restore();
+            if (assets.potion && assets.potion.complete) {
+                drawSprite(ctx, assets.potion, this.x, this.y, this.width, this.height, 1, this.rotation);
+            } else {
+                // 대체: 보라색 구
+                const dx = this.x - cameraX;
+                ctx.save(); ctx.translate(dx + this.width/2, this.y + this.height/2); ctx.rotate(this.rotation);
+                ctx.fillStyle = '#00FF7F'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
         }
     }
 
@@ -529,11 +471,17 @@
         }
         update() { this.radius += 5; this.opacity -= 0.05; if (this.opacity <= 0) this.markedForDeletion = true; }
         draw() {
-            const dx = this.x - cameraX;
-            ctx.save(); ctx.globalAlpha = this.opacity;
-            ctx.fillStyle = '#00C853'; ctx.beginPath(); ctx.arc(dx, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#69F0AE'; ctx.beginPath(); ctx.arc(dx - 10, this.y - 10, this.radius * 0.7, 0, Math.PI * 2); ctx.fill();
-            ctx.restore();
+            if (assets.explosion && assets.explosion.complete) {
+                // 폭발 이미지 그리기 (중심 기준 확대)
+                const size = this.radius * 2;
+                drawSprite(ctx, assets.explosion, this.x - this.radius, this.y - this.radius, size, size);
+            } else {
+                // 대체: 녹색 원
+                const dx = this.x - cameraX;
+                ctx.save(); ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = '#00C853'; ctx.beginPath(); ctx.arc(dx, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
         }
     }
 
@@ -546,7 +494,10 @@
             if (this.x < cameraX - 100 || this.x > cameraX + canvas.width + 100) this.markedForDeletion = true;
             obstacles.forEach(obs => { if(checkCollision(this, obs)) this.markedForDeletion = true; });
         }
-        draw() { const dx = this.x - cameraX; drawRect(ctx, dx, this.y, this.width, this.height, '#FFD600'); }
+        draw() { 
+            const dx = this.x - cameraX; 
+            ctx.fillStyle = '#FFD700'; ctx.fillRect(dx, this.y, this.width, this.height);
+        }
     }
 
     // === 실행 (Initialization) ===
