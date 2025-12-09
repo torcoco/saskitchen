@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Urban Alchemist - Real Assets</title>
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a1a;
+            display: flex;
+            justify_content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #333; /* 이미지가 로딩 안 됐을 때 기본 배경색 */
+            box-shadow: 0 0 60px rgba(0,0,0,0.6);
+            border: 4px solid #444;
+            border-radius: 4px;
+            /* 도트 이미지를 쓴다면 선명하게, 고해상도라면 부드럽게 (취향껏 조절 가능) */
+            image-rendering: pixelated; 
+        }
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.1rem;
+            z-index: 10;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .key {
+            display: inline-block;
+            background: #fff;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 20, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            z-index: 20;
+            border: 4px solid #ff4444;
+            min-width: 320px;
+        }
+        #gameOverTitle {
+            font-size: 3rem;
+            color: #ff4444;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-family: 'Impact', sans-serif;
+        }
+        #chargeBar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 240px;
+            height: 20px;
+            background: #222;
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+            border: 2px solid #fff;
+        }
+        #chargeFill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #00FF7F, #32CD32);
+        }
+        button {
+            font-size: 1.2rem; padding: 12px 30px; cursor: pointer;
+            background: #ff4444; color: white; border: none; border-radius: 8px;
+            font-weight: bold; transition: 0.2s;
+        }
+        button:hover { background: #ff6666; }
+    </style>
+</head>
+<body>
+
+    <div class="ui">
+        <div style="margin-bottom: 8px;">🏃 <span class="key">W</span> / <span class="key">Space</span> : JUMP</div>
+        <div style="margin-bottom: 8px;">🧪 <span class="key">L</span> (Hold): CHARGE POTION</div>
+        <div id="scoreBoard" style="margin-top: 10px; color: #FFD700; font-weight: bold;">TARGETS LEFT: 0</div>
+    </div>
+
+    <div id="chargeBar"><div id="chargeFill"></div></div>
+
+    <div id="gameOverScreen">
+        <div id="gameOverTitle">YOU DIED</div>
+        <div style="color:#ccc; margin-bottom:20px;">Mission Failed.</div>
+        <button onclick="location.reload()">RETRY</button>
+    </div>
+
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+<script>
+    // ==================================================================================
+    // [영훈님을 위한 이미지 설정 구역]
+    // * 따옴표("") 안에 이미지 주소(URL)를 넣어주세요.
+    // * 로컬 파일은 브라우저 보안상 바로 쓸 수 없으니, 이미지를 웹(Imgur 등)에 올리고 주소를 따오면 편해.
+    // * 주소를 넣지 않으면(빈칸) 자동으로 '색깔 박스'로 표시돼서 게임은 계속 할 수 있어.
+    // ==================================================================================
+    
+    const imageUrls = {
+        // 1. 캐릭터 (오른쪽을 보고 있는 투명 배경 PNG 추천)
+        player: "madp.png",  // 매드 사이언티스트 이미지 주소
+        enemy: "",   // 국정원 요원/적군 이미지 주소
+
+        // 2. 배경 (960x540 사이즈 권장)
+        background: "background.png", // 강남대로 배경 이미지 주소
+
+        // 3. 아이템 & 이펙트
+        potion: "",     // 물약 이미지
+        explosion: "",  // 폭발 이펙트 이미지
+
+        // 4. 장애물 (엄폐물)
+        car: "car.png",     // 승용차
+        stall: "nojum.png",   // 노점상
+        vending: "", // 자판기
+        pot: "pot.png"      // 화분
+    };
+
+    // ==================================================================================
+    
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreBoard = document.getElementById('scoreBoard');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const chargeBar = document.getElementById('chargeBar');
+    const chargeFill = document.getElementById('chargeFill');
+
+    // 이미지 로딩 시스템
+    const assets = {};
+    for (const [key, url] of Object.entries(imageUrls)) {
+        if (url && url.trim() !== "") {
+            const img = new Image();
+            img.src = url;
+            assets[key] = img;
+        }
+    }
+
+    // === 게임 설정 변수 ===
+    const worldWidth = 8000; 
+    const worldHeight = canvas.height;
+    const gravity = 0.8;
+    const baseGroundY = worldHeight - 80; 
+    
+    // 캐릭터 크기 (이미지 비율에 맞게 조절 가능)
+    const charWidth = 60; 
+    const charHeight = 90; 
+    
+    let gameFrame = 0; 
+    let cameraX = 0;
+    let gameOver = false;
+    let chargeStartTime = 0;
+    let isCharging = false;
+    const maxChargeTime = 1000; 
+
+    const keys = { w: false, a: false, s: false, d: false, l: false };
+    const bumps = []; // 지형 둔턱
+
+    // === 유틸리티 ===
+    function checkCollision(rect1, rect2) {
+        return (rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y);
+    }
+    
+    function checkCircleRectCollision(circle, rect) {
+        let distX = Math.abs(circle.x - rect.x - rect.width / 2);
+        let distY = Math.abs(circle.y - rect.y - rect.height / 2);
+        if (distX > (rect.width / 2 + circle.r)) return false;
+        if (distY > (rect.height / 2 + circle.r)) return false;
+        if (distX <= (rect.width / 2)) return true; 
+        if (distY <= (rect.height / 2)) return true;
+        let dx = distX - rect.width / 2;
+        let dy = distY - rect.height / 2;
+        return (dx * dx + dy * dy <= (circle.r * circle.r));
+    }
+
+    function getGroundY(x) {
+        let groundY = baseGroundY;
+        for(let bump of bumps) {
+            if (x >= bump.x && x <= bump.x + bump.width) {
+                let halfWidth = bump.width / 2;
+                let center = bump.x + halfWidth;
+                let distFromCenter = Math.abs(x - center);
+                let heightAtX = bump.height * (1 - distFromCenter / halfWidth);
+                groundY -= heightAtX;
+                break;
+            }
+        }
+        return groundY;
+    }
+
+    // === 렌더링 함수 (이미지 위주) ===
+    function drawSprite(ctx, img, x, y, w, h, direction = 1, rotation = 0) {
+        const dx = x - cameraX;
+        const dy = y;
+        
+        // 화면 밖 그리기 방지
+        if (dx < -w || dx > canvas.width + w) return;
+
+        ctx.save();
+        // 중심축 이동 (회전/반전을 위해)
+        ctx.translate(dx + w / 2, dy + h / 2);
+        
+        if (direction === -1) ctx.scale(-1, 1); // 좌우 반전
+        if (rotation !== 0) ctx.rotate(rotation);
+
+        try {
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        } catch (e) {
+            // 이미지 로드 중 에러나면 박스 그리기
+            ctx.fillStyle = 'magenta';
+            ctx.fillRect(-w / 2, -h / 2, w, h);
+        }
+        ctx.restore();
+    }
+
+    function drawCharacter(ctx, x, y, direction, isEnemy) {
+        const img = isEnemy ? assets.enemy : assets.player;
+        
+        // 이미지가 있으면 이미지 그리기
+        if (img && img.complete && img.naturalHeight !== 0) {
+            drawSprite(ctx, img, x, y, charWidth, charHeight, direction);
+        } else {
+            // 이미지가 없으면 대체 박스 (Fallback)
+            const dx = x - cameraX;
+            if (dx < -100 || dx > canvas.width + 100) return;
+            
+            ctx.fillStyle = isEnemy ? '#333' : '#F5F5F5'; // 적:검정, 나:흰색
+            ctx.fillRect(dx, y, charWidth, charHeight);
+            
+            // 눈 (방향 표시용)
+            ctx.fillStyle = 'red';
+            if(direction === 1) ctx.fillRect(dx + charWidth - 15, y + 10, 10, 10);
+            else ctx.fillRect(dx + 5, y + 10, 10, 10);
+            
+            // 이름표
+            ctx.fillStyle = 'white';
+            ctx.font = '12px sans-serif';
+            ctx.fillText(isEnemy ? "AGENT" : "YOU", dx, y - 5);
+        }
+    }
+
+    // === 배경 그리기 ===
+    class Background {
+        draw() {
+            // 1. 배경 이미지
+            if (assets.background && assets.background.complete && assets.background.naturalHeight !== 0) {
+                // 배경은 카메라 이동에 따라 약간 느리게 움직임 (Parallax)
+                let bgW = canvas.width; // 화면 꽉 채우기
+                let bgH = canvas.height;
+                
+                // 단순 반복 패턴 대신 큰 이미지 하나를 가정하거나, 반복
+                // 여기서는 반복으로 처리
+                let offsetX = (cameraX * 0.2) % bgW;
+                
+                ctx.drawImage(assets.background, -offsetX, 0, bgW, bgH);
+                ctx.drawImage(assets.background, -offsetX + bgW, 0, bgW, bgH);
+                if(-offsetX + bgW < canvas.width) ctx.drawImage(assets.background, -offsetX + bgW * 2, 0, bgW, bgH);
+            
+            } else {
+                // 이미지가 없으면 기본 하늘색 배경
+                let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                grad.addColorStop(0, '#87CEEB'); grad.addColorStop(1, '#E0F7FA');
+                ctx.fillStyle = grad; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#555';
+                ctx.font = '20px sans-serif';
+                ctx.fillText("배경 이미지를 설정해주세요 (background)", 50, 100);
+            }
+
+            // 2. 바닥 (이미지가 있어도 바닥 구분은 필요함)
+            // 투명도가 있는 검정색으로 살짝 덮어서 플레이 영역 표시
+            ctx.fillStyle = '#3E2723'; 
+            ctx.fillRect(0, baseGroundY, canvas.width, worldHeight - baseGroundY);
+            
+            // 상단 경계선
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, baseGroundY, canvas.width, 4);
+
+            // 3. 지형 둔턱
+            for(let bump of bumps) {
+                let drawBumpX = bump.x - cameraX;
+                if (drawBumpX > canvas.width || drawBumpX + bump.width < 0) continue;
+                
+                ctx.fillStyle = '#5D4037'; 
+                ctx.beginPath();
+                ctx.moveTo(drawBumpX, baseGroundY);
+                ctx.lineTo(drawBumpX + bump.width/2, baseGroundY - bump.height);
+                ctx.lineTo(drawBumpX + bump.width, baseGroundY);
+                ctx.fill();
+                ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.stroke();
+            }
+        }
+    }
+
+    // === 장애물 클래스 ===
+    class Obstacle {
+        constructor(x, type) {
+            this.x = x; 
+            this.type = type;
+            // 크기 설정
+            if (type === 'car') { this.width = 160; this.height = 60; } 
+            else if (type === 'stall') { this.width = 120; this.height = 90; } 
+            else if (type === 'vending') { this.width = 70; this.height = 80; } 
+            else if (type === 'pot') { this.width = 45; this.height = 45; } 
+            
+            this.y = baseGroundY - this.height;
+        }
+        draw() {
+            // 해당 타입의 이미지가 있는지 확인
+            const img = assets[this.type];
+            
+            if (img && img.complete && img.naturalHeight !== 0) {
+                drawSprite(ctx, img, this.x, this.y, this.width, this.height);
+            } else {
+                // 없으면 대체 도형
+                const dx = this.x - cameraX;
+                if (dx + this.width < -100 || dx > canvas.width + 100) return;
+                
+                if (this.type === 'car') ctx.fillStyle = 'red';
+                else if (this.type === 'stall') ctx.fillStyle = 'brown';
+                else if (this.type === 'vending') ctx.fillStyle = 'blue';
+                else ctx.fillStyle = 'green';
+                
+                ctx.fillRect(dx, this.y, this.width, this.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(this.type, dx + 5, this.y + 15);
+            }
+        }
+    }
+
+    // === 물리 엔티티 ===
+    class PhysicsEntity {
+        constructor(x, y, width, height) {
+            this.x = x; this.y = y; this.width = width; this.height = height;
+            this.vx = 0; this.vy = 0; this.grounded = false; this.direction = 1; this.gravityDirection = 1;
+        }
+        applyPhysics(obstacles) {
+            let nextX = this.x + this.vx;
+            if (nextX < 0) nextX = 0; if (nextX + this.width > worldWidth) nextX = worldWidth - this.width;
+            let collisionX = false;
+            obstacles.forEach(obs => { 
+                if (checkCollision({x: nextX, y: this.y, width: this.width, height: this.height}, obs)) collisionX = true; 
+            });
+            if (!collisionX) this.x = nextX; else this.vx = 0;
+
+            this.vy += gravity * this.gravityDirection; 
+            let nextY = this.y + this.vy;
+            this.grounded = false;
+
+            obstacles.forEach(obs => {
+                if (this.vy > 0 && this.x + this.width > obs.x + 5 && this.x < obs.x + obs.width - 5 && this.y + this.height <= obs.y && nextY + this.height >= obs.y) {
+                    nextY = obs.y - this.height; this.vy = 0; this.grounded = true;
+                }
+                if (this.vy < 0 && this.x + this.width > obs.x + 5 && this.x < obs.x + obs.width - 5 && this.y >= obs.y + obs.height && nextY <= obs.y + obs.height) {
+                    nextY = obs.y + obs.height; this.vy = 0;
+                }
+            });
+            let groundLevel = getGroundY(this.x + this.width/2);
+            if (!this.grounded && nextY + this.height > groundLevel && this.gravityDirection > 0) {
+                nextY = groundLevel - this.height; this.vy = 0; this.grounded = true;
+            }
+            this.y = nextY;
+        }
+    }
+
+    class Player extends PhysicsEntity {
+        constructor() { super(50, 0, charWidth, charHeight); this.speed = 6; this.jumpPower = -17; }
+        update(obstacles) {
+            if (keys.d) { this.vx = this.speed; this.direction = 1; }
+            else if (keys.a) { this.vx = -this.speed; this.direction = -1; }
+            else { this.vx = 0; }
+            if (keys.w && this.grounded) { this.vy = this.jumpPower; this.grounded = false; }
+            this.applyPhysics(obstacles);
+            
+            let targetCamX = this.x - canvas.width / 2 + this.width / 2;
+            if (targetCamX < 0) targetCamX = 0; if (targetCamX > worldWidth - canvas.width) targetCamX = worldWidth - canvas.width;
+            cameraX += (targetCamX - cameraX) * 0.1;
+        }
+        draw() { drawCharacter(ctx, this.x, this.y, this.direction, false); }
+    }
+
+    class Enemy extends PhysicsEntity {
+        constructor(startX) {
+            super(startX, 0, charWidth, charHeight);
+            this.speed = 3.5; this.isActive = false; this.viewDistance = 850;
+            this.isHit = false; this.shootTimer = 0; this.jumpPower = -17;
+        }
+        update(obstacles, player) {
+            if (this.isHit) {
+                this.gravityDirection = -0.5; this.vx = 0; 
+                this.applyPhysics(obstacles); if(this.y < -200) this.markedForDeletion = true; return; 
+            }
+            const dist = Math.abs(player.x - this.x);
+            if (!this.isActive && dist < this.viewDistance) this.isActive = true;
+            if (this.isActive) {
+                if (player.x > this.x + 10) { this.vx = this.speed; this.direction = 1; }
+                else if (player.x < this.x - 10) { this.vx = -this.speed; this.direction = -1; }
+                else { this.vx = 0; }
+                
+                if (this.grounded && this.vx !== 0) {
+                    let checkDist = 60; let checkX = this.direction === 1 ? this.x + this.width + checkDist : this.x - checkDist;
+                    let jumpNeeded = false;
+                    for(let obs of obstacles) {
+                        if (checkX > obs.x && checkX < obs.x + obs.width && this.y + this.height > obs.y + 10) { jumpNeeded = true; break; }
+                    }
+                    if(jumpNeeded) { this.vy = this.jumpPower; this.grounded = false; }
+                }
+                this.shootTimer++;
+                if (this.shootTimer % 90 === 0) { bullets.push(new Bullet(this.x, this.y + 35, this.direction)); }
+            }
+            this.applyPhysics(obstacles);
+        }
+        draw() { drawCharacter(ctx, this.x, this.y, this.direction, true); }
+    }
+
+    class Potion {
+        constructor(x, y, direction, powerRatio) {
+            this.x = x; this.y = y; this.width = 24; this.height = 24;
+            const minVx = 3; const maxVx = 25; const minVy = -6; const maxVy = -20;
+            this.vx = (minVx + (maxVx - minVx) * powerRatio) * direction;
+            this.vy = minVy + (maxVy - minVy) * powerRatio;
+            this.markedForDeletion = false; this.rotation = 0;
+        }
+        update(obstacles) {
+            this.vy += gravity; this.x += this.vx; this.y += this.vy; this.rotation += 0.2;
+            let groundLevel = getGroundY(this.x + this.width/2);
+            if (this.y + this.height > groundLevel) { this.explode(); return; }
+            obstacles.forEach(obs => { if(checkCollision(this, obs)) { this.explode(); } });
+        }
+        explode() {
+            this.markedForDeletion = true; explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2));
+        }
+        draw() {
+            if (assets.potion && assets.potion.complete) {
+                drawSprite(ctx, assets.potion, this.x, this.y, this.width, this.height, 1, this.rotation);
+            } else {
+                // 대체: 보라색 구
+                const dx = this.x - cameraX;
+                ctx.save(); ctx.translate(dx + this.width/2, this.y + this.height/2); ctx.rotate(this.rotation);
+                ctx.fillStyle = '#00FF7F'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+        }
+    }
+
+    class Explosion {
+        constructor(x, y) {
+            this.x = x; this.y = y; this.radius = 0; this.maxRadius = 70; this.opacity = 1; this.markedForDeletion = false;
+        }
+        update() { this.radius += 5; this.opacity -= 0.05; if (this.opacity <= 0) this.markedForDeletion = true; }
+        draw() {
+            if (assets.explosion && assets.explosion.complete) {
+                // 폭발 이미지 그리기 (중심 기준 확대)
+                const size = this.radius * 2;
+                drawSprite(ctx, assets.explosion, this.x - this.radius, this.y - this.radius, size, size);
+            } else {
+                // 대체: 녹색 원
+                const dx = this.x - cameraX;
+                ctx.save(); ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = '#00C853'; ctx.beginPath(); ctx.arc(dx, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+        }
+    }
+
+    class Bullet {
+        constructor(x, y, direction) {
+            this.x = x; this.y = y; this.width = 12; this.height = 6; this.speed = 14; this.direction = direction; this.markedForDeletion = false;
+        }
+        update(obstacles) {
+            this.x += this.speed * this.direction;
+            if (this.x < cameraX - 100 || this.x > cameraX + canvas.width + 100) this.markedForDeletion = true;
+            obstacles.forEach(obs => { if(checkCollision(this, obs)) this.markedForDeletion = true; });
+        }
+        draw() { 
+            const dx = this.x - cameraX; 
+            ctx.fillStyle = '#FFD700'; ctx.fillRect(dx, this.y, this.width, this.height);
+        }
+    }
+
+    // === 실행 (Initialization) ===
+    const player = new Player();
+    const bg = new Background();
+    let potions = [], bullets = [], enemies = [], obstacles = [], explosions = [];
+
+    function init() {
+        gameFrame = 0; potions = []; bullets = []; explosions = []; gameOver = false;
+        player.x = 50; player.y = 0; cameraX = 0;
+        
+        bumps.length = 0; let bumpX = 300;
+        while(bumpX < worldWidth) { bumps.push({ x: bumpX, width: 100 + Math.random()*100, height: 30 + Math.random()*30 }); bumpX += 400 + Math.random()*400; }
+
+        obstacles = []; let curX = 500;
+        while(curX < worldWidth - 500) {
+            let r = Math.random(); let type = r < 0.3 ? 'car' : (r < 0.5 ? 'stall' : (r < 0.7 ? 'vending' : 'pot'));
+            obstacles.push(new Obstacle(curX, type)); curX += Math.random() * 250 + 200; 
+        }
+
+        enemies = [];
+        for (let i = 0; i < 20; i++) { enemies.push(new Enemy(800 + Math.random() * (worldWidth - 1000))); }
+        scoreBoard.innerText = 'TARGETS LEFT: ' + enemies.length;
+        gameOverScreen.style.display = 'none';
+        animate();
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (gameOver) return;
+        let code = e.code;
+        if (code === 'KeyD') keys.d = true; if (code === 'KeyA') keys.a = true; if (code === 'KeyW' || code === 'Space') keys.w = true; 
+        if (code === 'KeyL' && !isCharging) { isCharging = true; chargeStartTime = Date.now(); chargeBar.style.display = 'block'; }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+        let code = e.code;
+        if (code === 'KeyD') keys.d = false; if (code === 'KeyA') keys.a = false; if (code === 'KeyW' || code === 'Space') keys.w = false;
+        if (code === 'KeyL' && isCharging) {
+            isCharging = false; chargeBar.style.display = 'none'; chargeFill.style.width = '0%';
+            if (gameOver) return;
+            const chargeDuration = Date.now() - chargeStartTime;
+            let powerRatio = Math.min(chargeDuration, maxChargeTime) / maxChargeTime;
+            let potionX = player.direction === 1 ? player.x + charWidth : player.x - 10;
+            potions.push(new Potion(potionX, player.y + 20, player.direction, powerRatio));
+        }
+    });
+
+    function animate() {
+        if (gameOver) return;
+        if (isCharging) {
+            const chargeDuration = Date.now() - chargeStartTime;
+            let p = Math.min(chargeDuration, maxChargeTime) / maxChargeTime * 100;
+            chargeFill.style.width = p + '%';
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        bg.draw();
+        obstacles.forEach(obs => obs.draw());
+        player.update(obstacles); 
+        drawCharacter(ctx, player.x, player.y, player.direction, false);
+
+        potions.forEach((potion, i) => { potion.update(obstacles); potion.draw(); if (potion.markedForDeletion) potions.splice(i, 1); });
+        explosions.forEach((exp, i) => { exp.update(); exp.draw(); if(exp.markedForDeletion) explosions.splice(i, 1); });
+        bullets.forEach((bullet, i) => {
+            bullet.update(obstacles); bullet.draw();
+            if(checkCollision(bullet, player)) { gameOver = true; gameOverScreen.style.display = 'block'; }
+            if (bullet.markedForDeletion) bullets.splice(i, 1);
+        });
+        enemies.forEach((enemy, eIndex) => {
+            enemy.update(obstacles, player); 
+            drawCharacter(ctx, enemy.x, enemy.y, enemy.direction, true);
+            if (!enemy.isHit) {
+                explosions.forEach(exp => {
+                    if (checkCircleRectCollision({x: exp.x, y: exp.y, r: exp.maxRadius}, enemy)) {
+                        enemy.isHit = true; scoreBoard.innerText = 'TARGETS LEFT: ' + (enemies.filter(e => !e.isHit).length);
+                    }
+                });
+            }
+            if (enemy.markedForDeletion) { enemies.splice(eIndex, 1); }
+        });
+        gameFrame++; requestAnimationFrame(animate);
+    }
+    init();
+
+</script>
+</body>
+</html>
